@@ -52,8 +52,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      # All tests are offline: fixtures and in-memory providers only, no live market APIs.
       - name: Run unit tests
-        # 鍏ㄩ儴娴嬭瘯閮芥槸绂荤嚎鐨勶細浣跨敤 fixture 涓庡唴瀛?provider锛屼笉璁块棶鐪熷疄閲戣瀺鎺ュ彛銆?        run: uv run python -m pytest -q
+        run: uv run python -m pytest -q
 
       - name: Smoke test the MCP server
         run: uv run python scripts/smoke_test.py
