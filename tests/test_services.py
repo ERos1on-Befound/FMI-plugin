@@ -355,4 +355,9 @@ def test_default_construction_builds_real_providers() -> None:
     service = MarketService(Settings())
     names = [provider.name for provider in service.providers]
     assert names  # at least one provider is enabled by default
-    assert set(names) == {"sina", "eastmoney", "akshare", "yfinance"}
+    # eastmoney is disabled by default since phase 3: its endpoints drop the
+    # connection once throttled, and a working install must not depend on it.
+    assert set(names) == {"sina", "akshare", "yfinance"}
+
+    enabled = MarketService(Settings(enable_eastmoney=True))
+    assert "eastmoney" in {provider.name for provider in enabled.providers}

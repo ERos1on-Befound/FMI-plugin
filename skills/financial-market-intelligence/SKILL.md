@@ -23,12 +23,14 @@ description: 通过本地 MCP 服务做轻量金融数据检索与研究：行�
 | 「算一下毛利率/ROE/资产负债率」「做一个三年营收 CAGR」 | ✅ | `calculate_financial_metrics` / `calculate_financial_formula` |
 | 「分析一下苹果的基本面」「比较苹果和微软的盈利能力」 | ✅ | `analyze_fundamentals` / `compare_companies` |
 | 「英伟达近半年技术面」「RSI 多少、MACD 金叉没有」 | ✅ | `get_technical_indicators` / `analyze_technicals` |
-| 「有哪些指标可以算」 | ✅ | `get_supported_indicators` |
+| 「画一张茅台近一年 K 线」「把苹果和微软的相对走势画出来」 | ✅ | `generate_financial_chart` / `generate_comparison_chart` |
+| 「生成苹果的基本面分析报告」「出一份英伟达技术面报告」 | ✅ | `generate_analysis_report` |
+| 「有哪些指标可以算」「你能画哪些图/出哪些报告」 | ✅ | `get_supported_indicators` / `get_available_chart_types` / `get_report_templates` |
 | 「该不该买」「预测明天涨跌」「给个目标价」「帮我回测」 | ❌ | 不做投资建议、不做预测、不做回测，只能提供数据、计算与方法说明 |
 | 逐笔/盘口五档/Level-2/分钟级实时、行业基准与同业百分位 | ❌ | 免费源不提供，如实说明 |
 | 新闻、研报、政策解读 | ❌ | 不在范围内 |
 
-## 2. 十四个工具
+## 2. 十九个工具
 
 ### 行情类（第一阶段）
 
@@ -54,6 +56,19 @@ description: 通过本地 MCP 服务做轻量金融数据检索与研究：行�
 | `compare_companies` | 多公司同指标对比（含可比性检查） | `symbols`、`metrics`、`period_type` | `ComparisonResult` |
 | `get_supported_indicators` | 公式/指标/技术指标清单与可用性 | — | `formulas`、`metrics`、`technical`、`data_sources` |
 
+### 图表与报告类（第三阶段）
+
+| 工具 | 用途 | 关键参数 | 主要返回 |
+| --- | --- | --- | --- |
+| `generate_financial_chart` | 生成单标的图表并落盘 | `symbol`、`chart_type`、`period`、`interval`、`indicators?` | `ChartResult`（`html_path`/`png_path`/`metadata`） |
+| `generate_comparison_chart` | 多标的对比图 | `symbols`、`metric`、`period`、`normalization` | `ChartResult` |
+| `get_available_chart_types` | 图表类型、技术指标、财务指标、归一化方式、PNG 是否可用 | — | `AvailableChartsResult` |
+| `generate_analysis_report` | 生成 Markdown/HTML 报告并落盘 | `symbol`、`report_type`、`output_format`、`include_charts?`、`periods?` | `ReportResult`（`markdown_path`/`html_path`/`charts`/`missing_data`） |
+| `get_report_templates` | 四种报告模板及其所需数据 | — | `ReportTemplatesResult` |
+
+`chart_type` 取值：`line`（收盘价折线）、`area`、`candlestick`（K 线，可带成交量副图）、`volume`、`technical`（指标面板，`indicators` 可用 `ma`/`macd`/`rsi`/`bollinger`/`atr`）、`fundamental`（财务趋势，可用 `revenue`/`net_income`/`gross_margin`/`net_margin`/`roe`/`cash_flow`/`free_cash_flow`）。
+`report_type` 取值：`fundamental`、`technical`、`comprehensive`、`comparison`（对比报告用 `symbols` 指定多家公司）。
+
 ## 3. 工具选择规则
 
 | 用户需求 | 工具 | 注意 |
@@ -67,6 +82,10 @@ description: 通过本地 MCP 服务做轻量金融数据检索与研究：行�
 | 技术面分析 | `analyze_technicals` | 指标只描述历史状态 |
 | 公司对比 | `compare_companies` | 先看 `comparable`，不可比不要排名 |
 | 查可用指标 | `get_supported_indicators` | 不确定指标名时先查 |
+| 画图（K 线/走势/指标/财务趋势） | `generate_financial_chart` | 画图前先确认数据够不够；**不要在绘图代码里另算指标** |
+| 画多标的对比图 | `generate_comparison_chart` | 不同币种金额不能同轴，改用 `normalization="base_100"` 或换比例指标 |
+| 生成分析报告 | `generate_analysis_report` | 只问一个指标时**不要**生成整份报告 |
+| 问能画什么/能出什么报告 | `get_available_chart_types` / `get_report_templates` | 不要在回复里凭印象列能力 |
 
 ### 调用原则
 
@@ -180,6 +199,25 @@ SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日�
 
 只问单个指标时不必铺满 10/9 段，给数值 + 一句位置说明即可。
 
+### 7.4 图表输出规则
+
+1. **先取数再画**：图表工具会自己取真实行情/财报；不要手写数据点，也不要用文字描述代替图。
+2. 回复里给出：图表名称、数据区间、来源、行情时间（`data_timestamp`）、**本机文件路径**（`html_path`、成功时的 `png_path`）。
+3. 说明路径只在生成它的这台机器上有效，**不要假设对方能直接打开**；需要跨机器分享时让用户自己上传。
+4. `status="unavailable"` 时说明原因（数据不足 / 全缺失 / 跨币种），**不要说"图已生成"**。
+5. `png_path=null` 说明 PNG 未生成（配置关闭或无 Chromium），HTML 仍然可用。
+6. 多标的对比：不同币种或不同价格水平不要放同一纵轴，用 `normalization="base_100"`，并说明"归一化不是汇率调整后的回报"。
+7. 图表里的指标数值来自 `analysis.technical`，与工具返回的数值必须一致；不要在文字里给出与图不同的数字。
+
+### 7.5 报告输出规则
+
+1. 报告基于真实数据生成；`status="partial"` 时给出 `missing_data`，并把"数据限制"一节转述给用户。
+2. 给出 `markdown_path` 与（若要求）`html_path`、`include_charts` 生成的图表路径。
+3. 报告里的"主要观察点"只描述指标状态与结构，**不写投资建议、目标价、评级**。
+4. 对比报告必须转述"数据可比性说明"；期间/币种不一致时明确说不可直接比较。
+5. 用户只问一个指标时**不要**生成整份报告。
+6. `error` 非空且没有文件时，如实说明失败原因，不要声称已生成。
+
 ## 8. 代码格式速查
 
 | 市场 | 写法 | 例子 | 中文别名 |
@@ -206,6 +244,10 @@ SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日�
 | 指标 `insufficient_data` | 说明缺哪个科目（看 `missing_fields` / `explanation`） |
 | 指标 `not_applicable` | 说明为什么不适用（分母为 0、EPS 为负、跨币种、利息未披露…） |
 | `compare_companies` 全部不可比 | 列出 `comparability_notes`，不给排名 |
+| 图表 `unavailable` | 说明数据不足的具体原因（K 线太少、成交量全空、指标全缺失、跨币种…），**不生成空图** |
+| 图表有 HTML 但无 PNG | 说明 PNG 导出被关闭或本机缺少 Chromium；HTML 仍可打开 |
+| 报告 `partial` | 给出 `missing_data`，并把"数据限制"转述清楚 |
+| 报告 `unavailable` / `error` 非空 | 说明失败原因，不要声称已生成文件 |
 | 技术指标 `insufficient_data` | 说明需要多少根 K 线，建议扩大 `period` |
 | 参数被拒（不支持 period/interval、ttm） | 按 `error` 修正参数重试，不要硬编 |
 
@@ -222,6 +264,12 @@ SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日�
    → 确认起止年份与间隔数；起止值为负或不一致时返回 `not_applicable` 并说明。
 5. **「经营现金流/净利润，比较近三年」**：`calculate_financial_metrics(symbol, metrics="cfo_to_net_income,free_cash_flow", periods=3)`
    → 逐年列出；净利 ≤0 的年份单独标注"比值不适用"。
+6. **「画茅台近一年 K 线」**：`generate_financial_chart("600519.SS", chart_type="candlestick", period="1y", interval="1d")`
+   → 检查 `status`；给出数据区间、来源、行情时间与 `html_path`；说明本机路径限制。
+7. **「苹果和微软的相对走势」**：`generate_comparison_chart("AAPL,MSFT", metric="price", period="6mo", normalization="base_100")`
+   → 说明基准=100、不是汇率调整后的回报；币种不同且未归一化时工具会拒绝，需改参数。
+8. **「生成英伟达技术面报告」**：`generate_analysis_report("NVDA", report_type="technical", period="6mo", output_format="html", include_charts=True)`
+   → 转述 9 节结构、`missing_data`、图表路径与免责声明；不追加买卖建议。
 
 ## 11. 风险提示与边界
 
@@ -231,6 +279,8 @@ SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日�
 - 期货合约价格受换月、涨跌停与结算规则影响，**不等于现货价格**。
 - 技术指标只是对历史价格的统计描述，**不预测未来**；本技能不输出「必然上涨/下跌」「买卖信号」「目标价」「保证收益」。
 - 基本面结论只基于真实计算，**不提供行业基准**，因此不会判断某指标"优秀/糟糕"。
+- 图表与报告都只是**数据整理**：图表里的走势不代表未来，报告不构成评级或建议。
+- 输出文件保存在生成它的那台机器的 `outputs/` 目录下，**路径不保证可被其他机器或 Agent 访问**。
 - 每个数字都应能追溯到某次工具调用；**不得凭记忆补全未查到的数据**。
 - 本技能只做数据检索、计算与整理，**不构成任何投资建议**；据此操作风险自负。
 
@@ -240,3 +290,5 @@ SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日�
 - `references/fundamental-guide.md`：五维指标口径、科目映射、可比性与限制
 - `references/technical-guide.md`：SMA/EMA/RSI/MACD/BOLL/ATR 的精确公式与参数
 - `references/formula-reference.md`：27 个内置公式与安全表达式语法
+- `references/chart-guide.md`：六类图表与对比图的参数、输出结构、元数据与限制
+- `references/output-format.md`：行情/基本面/技术面/图表/报告的推荐输出格式与禁止表述

@@ -1,12 +1,12 @@
 [project]
 name = "financial-market-intelligence"
-version = "0.2.0"
+version = "0.3.0"
 description = "A Lightweight Financial Market Data Retrieval & Research Skill exposed as an MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Financial Market Intelligence" }]
-keywords = ["finance", "market-data", "mcp", "yfinance", "akshare"]
+keywords = ["finance", "market-data", "mcp", "yfinance", "akshare", "plotly", "charts", "reports"]
 classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -22,6 +22,9 @@ dependencies = [
     "numpy>=1.26",
     "yfinance>=1.7",
     "akshare>=1.20",
+    "plotly>=7.1.0",
+    "kaleido>=1.5.0",
+    "markdown>=3.11.2",
 ]
 
 [dependency-groups]

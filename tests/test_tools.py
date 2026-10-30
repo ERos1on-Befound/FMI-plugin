@@ -35,6 +35,12 @@ EXPECTED_TOOLS = {
     "analyze_technicals",
     "compare_companies",
     "get_supported_indicators",
+    # phase 3: charts and reports
+    "generate_financial_chart",
+    "generate_comparison_chart",
+    "get_available_chart_types",
+    "generate_analysis_report",
+    "get_report_templates",
 }
 
 

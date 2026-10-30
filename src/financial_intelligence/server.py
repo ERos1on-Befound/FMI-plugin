@@ -1,6 +1,6 @@
 """MCP server exposing the Financial Market Intelligence tool surface.
 
-Fourteen tools are registered here; every one of them returns a typed model
+Nineteen tools are registered here; every one of them returns a typed model
 from :mod:`financial_intelligence.schemas` or
 :mod:`financial_intelligence.models`, so MCP clients get a real output schema
 (not a free-form string).
@@ -40,6 +40,12 @@ from .models.analysis_result import (
     SupportedIndicatorsResult,
     TechnicalResult,
 )
+from .models.chart_result import (
+    AvailableChartsResult,
+    ChartResult,
+    ReportResult,
+    ReportTemplatesResult,
+)
 from .models.financial_statements import FinancialStatements
 from .schemas import (
     AssetType,
@@ -53,7 +59,14 @@ from .schemas import (
     iso,
     utc_now,
 )
-from .services import CalculationService, FundamentalService, MarketService, TechnicalService
+from .services import (
+    CalculationService,
+    ChartService,
+    FundamentalService,
+    MarketService,
+    ReportService,
+    TechnicalService,
+)
 from .utils.symbol_mapper import SYMBOL_HELP
 from .utils.validators import InputError
 
@@ -75,6 +88,12 @@ INSTRUCTIONS = f"""\
 7. 算指标 → calculate_financial_metrics（多指标多期）；自定义口径 → calculate_financial_formula。
 8. 技术指标 → get_technical_indicators、analyze_technicals。
 9. 结构化分析 → analyze_fundamentals、compare_companies。
+10. 出图 → generate_financial_chart（单标的）、generate_comparison_chart（多标的）；
+    不确定有哪些图表类型时先调用 get_available_chart_types。
+11. 出报告 → generate_analysis_report（fundamental / technical / comprehensive /
+    comparison）；想知道报告包含哪些章节时先调用 get_report_templates。
+12. 图表与报告都写在 outputs/ 下，返回的 html_path / png_path / markdown_path
+    是本次真实生成的文件路径；本机路径不保证对其他机器可访问。
 
 硬性约束（回答用户时必须遵守）：
 - 数据全部来自免费公开接口，不能声称是实时行情；yfinance / AKShare / 新浪快照一律按 delayed 处理。
@@ -86,6 +105,8 @@ INSTRUCTIONS = f"""\
 - 指标要么是原始数据、要么是公式计算结果，都要给出公式与来源；数据不足就说 insufficient_data，
   公式不适用就说 not_applicable，禁止拿 0 顶替缺失值。
 - 技术指标只描述历史状态，不预测涨跌，不给目标价与买卖信号。
+- 图表必须来自本次真实生成的文件，不要编造路径或声称图片已在别处显示；
+  报告中缺失的数据以“—”标注，不要用推测值补全。
 - 只做数据检索、计算与整理，不构成投资建议。
 """
 
@@ -93,6 +114,8 @@ _service: MarketService | None = None
 _fundamental_service: FundamentalService | None = None
 _technical_service: TechnicalService | None = None
 _calculation_service: CalculationService | None = None
+_chart_service: ChartService | None = None
+_report_service: ReportService | None = None
 
 
 def get_service() -> MarketService:
@@ -122,6 +145,53 @@ def get_calculation_service() -> CalculationService:
     if _calculation_service is None:
         _calculation_service = CalculationService(load_settings())
     return _calculation_service
+
+
+def get_chart_service() -> ChartService:
+    global _chart_service
+    if _chart_service is None:
+        _chart_service = ChartService(load_settings())
+    return _chart_service
+
+
+def get_report_service() -> ReportService:
+    global _report_service
+    if _report_service is None:
+        _report_service = ReportService(load_settings())
+    return _report_service
+
+
+def _unavailable_chart(
+    symbol: str, exc: Exception, chart_type: str, *, notes: list[str] | None = None
+) -> ChartResult:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return ChartResult(
+        chart_name=f"{str(symbol).strip().upper()} {chart_type}",
+        symbol=str(symbol).strip().upper(),
+        chart_type=chart_type,
+        status="unavailable",
+        source="unavailable",
+        generated_at=iso(utc_now()) or "",
+        error=f"{exc}{hint}",
+        notes=list(notes or []) + ["本次没有生成任何文件，因此没有返回文件路径。"],
+    )
+
+
+def _unavailable_report(
+    symbol: str, exc: Exception, report_type: str, output_format: str
+) -> ReportResult:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return ReportResult(
+        report_name=f"{str(symbol).strip().upper()} {report_type} report",
+        symbol=str(symbol).strip().upper(),
+        report_type=report_type,
+        output_format=output_format,
+        status="unavailable",
+        generated_at=iso(utc_now()) or "",
+        error=f"{exc}{hint}",
+        missing_data=[],
+        notes=["本次没有生成报告文件，因此没有返回文件路径。"],
+    )
 
 
 def _unavailable_provenance(symbol: str, *, source: str = "unavailable") -> Provenance:
@@ -756,6 +826,233 @@ def build_server() -> Any:
         先调用本工具。
         """
         return get_calculation_service().supported()
+
+    @mcp.tool()
+    def generate_financial_chart(
+        symbol: Annotated[
+            str,
+            Field(description="资产代码，如 AAPL、NVDA、0700.HK、600519.SS、^GSPC、GC=F。"),
+        ],
+        chart_type: Annotated[
+            str,
+            Field(
+                description=(
+                    "图表类型：line（走势折线）/ area（面积）/ candlestick（K线）/ "
+                    "volume（成交量）/ technical（技术指标面板）/ fundamental（财务趋势）。默认 line。"
+                )
+            ),
+        ] = "line",
+        period: Annotated[
+            str,
+            Field(description="历史窗口，可选 1mo / 3mo / 6mo / 1y / 2y / 5y，默认 6mo。"),
+        ] = "6mo",
+        interval: Annotated[
+            str,
+            Field(description="K线间隔，可选 1d / 1wk / 1mo，默认 1d。"),
+        ] = "1d",
+        indicators: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "逗号分隔的选择：technical 图可指定 ma,macd,rsi,bollinger,atr；"
+                    "fundamental 图可指定 revenue,net_income,gross_margin,roe,cash_flow。"
+                )
+            ),
+        ] = None,
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+    ) -> ChartResult:
+        """在真实数据上生成一张图表文件（HTML + 可选 PNG），并返回可核对的元数据。
+
+        Args:
+            symbol: 资产代码。
+            chart_type: 图表类型。
+            period: 历史窗口。
+            interval: K线间隔。
+            indicators: 技术面板或财务指标选择。
+            market: 可选市场提示。
+
+        图表只画已经取到的数据：技术指标由与技术面工具完全相同的代码计算，
+        不会在绘图时另算一套。返回的 html_path / png_path 是本次真实的文件路径，
+        文件不存在时不会返回路径；数据不足时 status 为 unavailable 并在 error 中说明原因。
+        """
+        selection = [item.strip() for item in (indicators or "").split(",") if item.strip()]
+        try:
+            return get_chart_service().generate(
+                symbol,
+                chart_type=chart_type,
+                period=period,
+                interval=interval,
+                indicators=selection or None,
+                market=market,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad chart input %r: %s", symbol, exc)
+            return _unavailable_chart(symbol, exc, chart_type)
+        except Exception as exc:  # noqa: BLE001 - a chart failure must not kill the server
+            logger.exception("chart generation failed for %r", symbol)
+            return _unavailable_chart(symbol, exc, chart_type)
+
+    @mcp.tool()
+    def generate_comparison_chart(
+        symbols: Annotated[
+            str,
+            Field(description="逗号分隔的多个代码，例如 AAPL,MSFT,NVDA。"),
+        ],
+        metric: Annotated[
+            str,
+            Field(
+                description=(
+                    "比较口径：price（价格相对表现，可配合 normalization）/ "
+                    "revenue / net_income / gross_margin / net_margin / roe / debt_ratio / free_cash_flow。"
+                )
+            ),
+        ] = "price",
+        period: Annotated[
+            str,
+            Field(description="历史窗口（price 口径下使用），默认 6mo。"),
+        ] = "6mo",
+        normalization: Annotated[
+            str,
+            Field(description="归一化方式：none 或 base_100（以首个数据点为 100）。默认 none。"),
+        ] = "none",
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示；跨市场比较时省略。"),
+        ] = None,
+    ) -> ChartResult:
+        """比较多个标的的价格相对表现或同一财务指标。
+
+        Args:
+            symbols: 逗号分隔的代码。
+            metric: price 或其他财务指标。
+            period: 历史窗口。
+            normalization: none 或 base_100。
+            market: 可选市场提示。
+
+        价格比较按 base_100 归一化时只表示相对涨跌，不代表汇率调整后的投资回报。
+        金额类指标（revenue / net_income / free_cash_flow）在不同币种之间会直接拒绝
+        生成图表并说明原因，不会把人民币与美元金额画在同一纵轴上；报告期不一致时
+        会在 notes 中提示。
+        """
+        try:
+            return get_chart_service().comparison(
+                symbols,
+                metric=metric,
+                period=period,
+                normalization=normalization,
+                market=market,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad comparison chart input %r: %s", symbols, exc)
+            return _unavailable_chart(symbols, exc, f"comparison:{metric}")
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("comparison chart failed for %r", symbols)
+            return _unavailable_chart(symbols, exc, f"comparison:{metric}")
+
+    @mcp.tool()
+    def get_available_chart_types() -> AvailableChartsResult:
+        """列出当前真实可用的图表类型、可用指标选项与输出目录。
+
+        返回 chart_types（每项含 name / label / category / requires / options /
+        available）、technical_indicators、fundamental_metrics、normalizations、
+        output_formats 与 png_export_enabled。只列出已实现且经过测试的类型，
+        未实现的类型不会出现在结果里。
+        """
+        return get_chart_service().available()
+
+    @mcp.tool()
+    def generate_analysis_report(
+        symbol: Annotated[
+            str,
+            Field(description="资产代码；对比报告可传逗号分隔的多个代码，如 AAPL,MSFT,NVDA。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+        report_type: Annotated[
+            str,
+            Field(description="报告类型：fundamental / technical / comprehensive / comparison。"),
+        ] = "fundamental",
+        period: Annotated[
+            str,
+            Field(description="技术面窗口（technical / comprehensive 使用），默认 6mo。"),
+        ] = "6mo",
+        interval: Annotated[
+            str,
+            Field(description="K线间隔，默认 1d。"),
+        ] = "1d",
+        output_format: Annotated[
+            str,
+            Field(description="主输出格式：markdown 或 html；两个版本都会写在同一个目录。"),
+        ] = "markdown",
+        include_charts: Annotated[
+            bool,
+            Field(description="是否在报告中插入图表，默认 true。"),
+        ] = True,
+        include_raw_data: Annotated[
+            bool,
+            Field(description="是否附加原始数据字段说明，默认 false。"),
+        ] = False,
+        period_type: Annotated[
+            str,
+            Field(description="财务报告期类型：annual 或 quarterly，默认 annual。"),
+        ] = "annual",
+        periods: Annotated[
+            int | None,
+            Field(description="使用最近几期财报，省略时 annual 用 3 期、quarterly 用 4 期。"),
+        ] = None,
+    ) -> ReportResult:
+        """生成一份基于真实数据的 Markdown + HTML 研究报告。
+
+        Args:
+            symbol: 资产代码。
+            market: 可选市场提示。
+            report_type: fundamental / technical / comprehensive / comparison。
+            period: 技术面窗口。
+            interval: K线间隔。
+            output_format: 主格式。
+            include_charts: 是否插图。
+            include_raw_data: 是否附数据说明。
+            period_type: 财务报告期类型。
+            periods: 使用的财报期数。
+
+        报告中的每个数字都来自工具返回的真实数据；缺失字段以“—”标注而不会补 0，
+        数据不完整时会生成部分报告并说明缺什么。comprehensive 需要基本面与技术面
+        都可用，缺一侧会标注为部分报告。返回的 markdown_path / html_path 是真实文件路径。
+        """
+        try:
+            return get_report_service().generate(
+                symbol,
+                market=market,
+                report_type=report_type,
+                period=period,
+                interval=interval,
+                output_format=output_format,
+                include_charts=include_charts,
+                include_raw_data=include_raw_data,
+                period_type=period_type,
+                periods=periods,
+                symbols=symbol,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad report input %r: %s", symbol, exc)
+            return _unavailable_report(symbol, exc, report_type, output_format)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("report generation failed for %r", symbol)
+            return _unavailable_report(symbol, exc, report_type, output_format)
+
+    @mcp.tool()
+    def get_report_templates() -> ReportTemplatesResult:
+        """列出四类报告模板（基本面 / 技术面 / 综合分析 / 公司对比）。
+
+        返回每类模板的适用场景、所需数据、输出格式与章节结构；生成报告前可以先用
+        本工具确认某类报告需要哪些数据、会包含哪些章节。PDF 不在支持范围内。
+        """
+        return get_report_service().templates()
 
     return mcp
 

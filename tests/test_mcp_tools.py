@@ -7,12 +7,15 @@ output, error handling and tool isolation.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from mcp import Client
 
 from financial_intelligence import server
+from financial_intelligence.config import load_settings
 from financial_intelligence.models.financial_statements import FinancialStatement
 from financial_intelligence.providers.base import FinancialDataProvider
 from financial_intelligence.schemas import (
@@ -25,7 +28,13 @@ from financial_intelligence.schemas import (
     iso,
     utc_now,
 )
-from financial_intelligence.services import CalculationService, FundamentalService, TechnicalService
+from financial_intelligence.services import (
+    CalculationService,
+    ChartService,
+    FundamentalService,
+    ReportService,
+    TechnicalService,
+)
 from financial_intelligence.utils.symbol_mapper import SymbolSpec
 
 pytestmark = pytest.mark.anyio
@@ -151,15 +160,32 @@ class FakeMarket:
 
 
 @pytest.fixture()
-def wired_server(monkeypatch: pytest.MonkeyPatch):
+def wired_server(monkeypatch: pytest.MonkeyPatch, tmp_path):
     market = FakeMarket()
-    monkeypatch.setattr(server, "_fundamental_service", FundamentalService(providers=[FakeFinancialProvider()], market=market))
-    monkeypatch.setattr(server, "_technical_service", TechnicalService(market=market))
+    settings = replace(load_settings(), outputs_dir=str(tmp_path), enable_png_export=False)
+    fundamentals = FundamentalService(
+        settings=settings, providers=[FakeFinancialProvider()], market=market
+    )
+    technicals = TechnicalService(settings=settings, market=market)
+    charts = ChartService(
+        settings, market=market, technical=technicals, fundamental=fundamentals
+    )
+    reports = ReportService(
+        settings,
+        fundamentals=fundamentals,
+        technicals=technicals,
+        charts=charts,
+        market=market,
+    )
+    monkeypatch.setattr(server, "_fundamental_service", fundamentals)
+    monkeypatch.setattr(server, "_technical_service", technicals)
     monkeypatch.setattr(server, "_calculation_service", CalculationService())
+    monkeypatch.setattr(server, "_chart_service", charts)
+    monkeypatch.setattr(server, "_report_service", reports)
     return server.build_server()
 
 
-async def test_all_fourteen_tools_are_discoverable(wired_server) -> None:
+async def test_all_nineteen_tools_are_discoverable(wired_server) -> None:
     async with Client(wired_server, raise_exceptions=True) as client:
         tools = (await client.list_tools()).tools
     names = {tool.name for tool in tools}
@@ -178,6 +204,11 @@ async def test_all_fourteen_tools_are_discoverable(wired_server) -> None:
         "analyze_technicals",
         "compare_companies",
         "get_supported_indicators",
+        "generate_financial_chart",
+        "generate_comparison_chart",
+        "get_available_chart_types",
+        "generate_analysis_report",
+        "get_report_templates",
     }
     assert names == expected
     for tool in tools:
@@ -327,3 +358,83 @@ async def test_server_stays_usable_after_a_failed_call(wired_server) -> None:
         good = await client.call_tool("get_supported_indicators", {})
     assert bad.structured_content["calculation_status"] == "unavailable"
     assert good.structured_content["metrics"]
+
+
+# -- phase 3: charts and reports ---------------------------------------------
+async def test_chart_tool_schema(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+    schema = tools["generate_financial_chart"].input_schema
+    assert schema["required"] == ["symbol"]
+    assert {"symbol", "chart_type", "period", "interval", "indicators", "market"} <= set(
+        schema["properties"]
+    )
+    assert schema["properties"]["chart_type"]["default"] == "line"
+
+
+async def test_chart_tool_returns_existing_file(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "generate_financial_chart", {"symbol": "AAPL", "chart_type": "candlestick"}
+        )
+    assert not result.is_error
+    payload = result.structured_content
+    assert payload["status"] == "ok"
+    assert payload["html_path"] and Path(payload["html_path"]).is_file()
+    assert payload["png_path"] is None  # PNG export disabled in the test settings
+    assert payload["metadata"]["symbol"] == "AAPL"
+    assert payload["metadata"]["chart_type"] == "candlestick"
+
+
+async def test_comparison_chart_tool(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "generate_comparison_chart",
+            {"symbols": "AAPL,MSFT", "metric": "price", "normalization": "base_100"},
+        )
+    assert not result.is_error
+    payload = result.structured_content
+    assert payload["status"] == "ok"
+    assert Path(payload["html_path"]).is_file()
+
+
+async def test_chart_error_is_structured_not_raised(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "generate_financial_chart", {"symbol": "AAPL", "chart_type": "pie"}
+        )
+    assert not result.is_error
+    payload = result.structured_content
+    assert payload["status"] == "unavailable"
+    assert payload["html_path"] is None
+    assert payload["error"]
+
+
+async def test_chart_types_tool(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool("get_available_chart_types", {})
+    payload = result.structured_content
+    names = [item["name"] for item in payload["chart_types"]]
+    assert names == ["line", "area", "candlestick", "volume", "technical", "fundamental"]
+    assert payload["png_export_enabled"] is False
+
+
+async def test_report_tool_returns_existing_files(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "generate_analysis_report",
+            {"symbol": "AAPL", "report_type": "fundamental", "output_format": "markdown"},
+        )
+    assert not result.is_error
+    payload = result.structured_content
+    assert payload["status"] == "ok", payload.get("error")
+    assert Path(payload["markdown_path"]).is_file()
+    assert payload["data_sources"] == ["fake"]
+
+
+async def test_report_templates_tool(wired_server) -> None:
+    async with Client(wired_server, raise_exceptions=True) as client:
+        result = await client.call_tool("get_report_templates", {})
+    payload = result.structured_content
+    names = [item["name"] for item in payload["templates"]]
+    assert names == ["fundamental", "technical", "comprehensive", "comparison"]

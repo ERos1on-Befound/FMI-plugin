@@ -8,13 +8,16 @@ build/
 dist/
 .venv/
 venv/
-.python-version.bak
+env/
+ENV/
 
 # Test / tooling caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.pytype/
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
 
@@ -26,9 +29,19 @@ htmlcov/
 # OS / editor
 .DS_Store
 Thumbs.db
+desktop.ini
 .idea/
 .vscode/
 
 # Local scratch output produced by scripts
 scripts/output/
 *.log
+logs/
+tmp/
+temp/
+
+# Generated charts and reports (users generate these locally)
+outputs/charts/*
+outputs/reports/*
+!outputs/charts/.gitkeep
+!outputs/reports/.gitkeep

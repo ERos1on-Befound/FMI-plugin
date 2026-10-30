@@ -15,12 +15,13 @@ import logging
 import os
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Mapping
 
 PACKAGE_NAME = "financial-market-intelligence"
 DISPLAY_NAME = "Financial Market Intelligence"
 SUBTITLE = "A Lightweight Financial Market Data Retrieval & Research Skill"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 #: Supported history windows, in the order they are advertised.
 SUPPORTED_PERIODS: tuple[str, ...] = ("1mo", "3mo", "6mo", "1y", "2y", "5y")
@@ -79,6 +80,21 @@ def _env_order(env: Mapping[str, str], key: str, default: tuple[str, ...]) -> tu
     return items or default
 
 
+def project_root() -> Path | None:
+    """Return the source checkout root, or ``None`` when running installed."""
+    try:
+        root = Path(__file__).resolve().parents[2]
+    except IndexError:  # pragma: no cover - defensive
+        return None
+    return root if (root / "pyproject.toml").exists() else None
+
+
+def default_outputs_dir() -> Path:
+    """Directory that receives generated charts and reports by default."""
+    root = project_root() or Path.cwd()
+    return root / "outputs"
+
+
 @dataclass(frozen=True)
 class Settings:
     """Immutable runtime settings for the FMI server."""
@@ -107,7 +123,11 @@ class Settings:
     #: serve a symbol is skipped, and a provider that fails falls through to the
     #: next one (the failure reasons are surfaced in ``Quote.error``).
     enable_sina: bool = True
-    enable_eastmoney: bool = True
+    #: Eastmoney is **disabled by default**.  Its push2 edge drops connections
+    #: instead of answering 429, so the source is reported as ``unavailable`` and
+    #: is not part of the default provider chain.  Set ``FMI_ENABLE_EASTMONEY=1``
+    #: only if you know your IP is not throttled.
+    enable_eastmoney: bool = False
     enable_akshare: bool = True
     enable_yfinance: bool = True
     provider_order: tuple[str, ...] = ("sina", "eastmoney", "akshare", "yahoo")
@@ -128,6 +148,18 @@ class Settings:
     sec_user_agent: str = "financial-market-intelligence/0.2 (research use; contact: set-FMI_SEC_USER_AGENT)"
     #: How long a downloaded set of SEC facts / statements is reused (seconds).
     financial_cache_ttl: float = 12 * 3600.0
+
+    # --- chart / report output ---
+    #: Directory that receives generated charts and reports.  Empty means
+    #: ``<project>/outputs`` when the source tree is available, else ``./outputs``.
+    outputs_dir: str = ""
+    chart_width: int = 1100
+    chart_height: int = 640
+    #: PNG pixel scale factor (``kaleido`` only; HTML export ignores it).
+    chart_scale: float = 2.0
+    #: PNG export needs ``kaleido`` plus a local Chrome/Chromium.  When the
+    #: export fails the HTML file is still produced and the failure is reported.
+    enable_png_export: bool = True
 
     # --- data freshness thresholds (seconds) ---
     #: A quote whose market timestamp is older than this is reported as ``stale``.
@@ -160,7 +192,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         history_cache_ttl=_env_float(source, "FMI_HISTORY_CACHE_TTL", 300.0),
         max_history_rows=_env_int(source, "FMI_MAX_HISTORY_ROWS", 1500),
         enable_sina=_env_bool(source, "FMI_ENABLE_SINA", True),
-        enable_eastmoney=_env_bool(source, "FMI_ENABLE_EASTMONEY", True),
+        enable_eastmoney=_env_bool(source, "FMI_ENABLE_EASTMONEY", False),
         enable_akshare=_env_bool(source, "FMI_ENABLE_AKSHARE", True),
         enable_yfinance=_env_bool(source, "FMI_ENABLE_YFINANCE", True),
         enable_sec=_env_bool(source, "FMI_ENABLE_SEC", True),
@@ -178,6 +210,11 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
             "financial-market-intelligence/0.2 (research use; contact: set-FMI_SEC_USER_AGENT)",
         ),
         financial_cache_ttl=_env_float(source, "FMI_FINANCIAL_CACHE_TTL", 12 * 3600.0),
+        outputs_dir=_env_str(source, "FMI_OUTPUT_DIR", ""),
+        chart_width=_env_int(source, "FMI_CHART_WIDTH", 1100),
+        chart_height=_env_int(source, "FMI_CHART_HEIGHT", 640),
+        chart_scale=_env_float(source, "FMI_CHART_SCALE", 2.0),
+        enable_png_export=_env_bool(source, "FMI_ENABLE_PNG_EXPORT", True),
         stale_after=_env_float(source, "FMI_STALE_AFTER_DAYS", 10.0) * 86400.0,
         log_level=_env_str(source, "FMI_LOG_LEVEL", "INFO").upper(),
     )
