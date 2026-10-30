@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题与讨论
+    url: https://github.com/ERos1on-Befound/FMI-plugin/discussions
+    about: 安装、配置、Harness 接入、数据源状态等问题优先在 Discussions 交流
+  - name: 安全问题（私密报告）
+    url: https://github.com/ERos1on-Befound/FMI-plugin/security/advisories/new
+    about: 凭据泄露、沙箱绕过等敏感问题请走私密渠道，不要开公开 Issue

@@ -12,8 +12,8 @@ import time
 import pytest
 
 from financial_intelligence.config import load_settings
-from financial_intelligence.providers.base import ProviderError
 from financial_intelligence.providers import eastmoney as em
+from financial_intelligence.providers.base import ProviderError
 from financial_intelligence.providers.eastmoney import (
     EastmoneyProvider,
     decode_quote,

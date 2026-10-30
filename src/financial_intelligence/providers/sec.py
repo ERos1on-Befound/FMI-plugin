@@ -28,8 +28,8 @@ from ..config import Settings
 from ..models.financial_statements import (
     BALANCE_FIELDS,
     CASHFLOW_FIELDS,
-    INCOME_FIELDS,
     FIELD_ALIASES,
+    INCOME_FIELDS,
     FinancialStatement,
     canonicalize,
     derive_balance,

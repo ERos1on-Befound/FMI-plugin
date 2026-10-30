@@ -11,13 +11,6 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-
-from financial_intelligence.services.chart_service import ChartService
-from financial_intelligence.services.fundamental_service import FundamentalService
-from financial_intelligence.services.report_service import ReportService
-from financial_intelligence.services.technical_service import TechnicalService
-from financial_intelligence.utils.validators import InputError
-
 from fixtures import (
     FakeFinancialProvider,
     FakeMarket,
@@ -25,6 +18,12 @@ from fixtures import (
     make_statement,
     make_statements,
 )
+
+from financial_intelligence.services.chart_service import ChartService
+from financial_intelligence.services.fundamental_service import FundamentalService
+from financial_intelligence.services.report_service import ReportService
+from financial_intelligence.services.technical_service import TechnicalService
+from financial_intelligence.utils.validators import InputError
 
 
 @pytest.fixture()

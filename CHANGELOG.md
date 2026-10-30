@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+- 仓库工程化配置：`.gitattributes`（统一 LF、二进制与生成文件规则）、`.github/dependabot.yml`（uv 与 Actions 每周/每月更新）、Issue 模板（Bug / 功能建议）与 PR 模板、`SECURITY.md`、`CITATION.cff`。
+- Ruff 静态检查（`select = ["E4","E7","E9","F","I"]`）加入开发依赖与 CI；修复 21 处未使用导入与导入顺序问题。
+- `examples/images/` 五个真实图表 PNG，README 与 `examples/chart_gallery.md` 直接展示，不再依赖本机 `outputs/` 路径。
+- README 增加 CI / Python / License / MCP 徽章；`pyproject.toml` 增加 `[project.urls]` 与更准确的 classifiers。
+
 ### 待办
 - 更多市场覆盖（如新加坡、日本）与更多免费财报来源的可行性验证。
 - 图表导出 SVG / 交互式数据表。

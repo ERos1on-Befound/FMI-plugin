@@ -1,6 +1,8 @@
 ﻿"""Probe the AKShare statement shapes we depend on (annual + quarterly)."""
 import json
+
 import akshare as ak
+
 
 def probe_cn():
     for sym in ("利润表", "资产负债表", "现金流量表"):

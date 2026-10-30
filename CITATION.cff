@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this project in research or teaching, please cite it as below."
+title: "Financial Market Intelligence"
+abstract: "A lightweight financial market data retrieval and research skill exposed as an MCP server: delayed quotes, historical OHLCV, public financial statements, formula engine, fundamental and technical analysis, charts and reports."
+version: 0.3.0
+date-released: "2026-10-30"
+license: MIT
+type: software
+authors:
+  - name: "ERos1on-Befound"
+    alias: "ERos1on-Befound"
+repository-code: "https://github.com/ERos1on-Befound/FMI-plugin"
+keywords:
+  - finance
+  - market-data
+  - mcp
+  - technical-analysis
+  - fundamental-analysis
+  - plotly

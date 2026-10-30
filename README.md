@@ -1,5 +1,10 @@
 # Financial Market Intelligence
 
+[![tests](https://github.com/ERos1on-Befound/FMI-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/ERos1on-Befound/FMI-plugin/actions/workflows/tests.yml)
+[![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://github.com/ERos1on-Befound/FMI-plugin)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![mcp](https://img.shields.io/badge/MCP-server-6f42c1)](https://modelcontextprotocol.io)
+
 > A Lightweight Financial Market Data Retrieval & Research Skill
 
 面向 AI Agent 的轻量金融数据检索与研究中心：以 **MCP Server** 形式提供行情、历史行情、公开财报、金融公式、基本面分析、技术面分析，并能把结果整理成**可追溯的图表与分析报告**。
@@ -267,6 +272,18 @@ AAPL 现在多少钱？
 - 每张图都记录元数据：`symbol`、`asset_name`、`chart_type`、`period`、`interval`、`currency`、`source`、`retrieved_at`、`data_timestamp`、`generated_at`（财务图另含 `fiscal_period`、`reporting_currency`、`reporting_unit`）。
 - **图表生成时间不是行情时间**；报告中的数据期间与披露日单独标注。
 - 数据不足时不生成空白图：返回 `unavailable` 并说明原因。
+
+### 真实输出示例
+
+以下 PNG 由 `scripts/make_phase3_examples.py` 用真实数据生成（2026-10-30），原图同时提供可交互 HTML，详见 [examples/chart_gallery.md](examples/chart_gallery.md)。
+
+| NVDA K 线 + 成交量 | NVDA 技术指标面板 |
+| --- | --- |
+| ![NVDA K 线图](examples/images/nvda_candlestick.png) | ![NVDA 技术指标](examples/images/nvda_technical.png) |
+
+| AAPL 财务趋势（FY2018–FY2025） | 多标的相对表现（base_100） |
+| --- | --- |
+| ![AAPL 财务趋势](examples/images/aapl_fundamental.png) | ![多标的相对表现](examples/images/aapl_msft_nvda_relative.png) |
 
 ## 11. 测试
 

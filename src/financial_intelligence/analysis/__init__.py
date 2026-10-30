@@ -12,14 +12,14 @@ The package is intentionally split so that each piece has a single job:
 from __future__ import annotations
 
 from .financial_formulas import (
-    FORMULAS,
     FORMULA_VERSION,
+    FORMULAS,
     FormulaError,
     FormulaInput,
     FormulaOutcome,
     FormulaSpec,
-    compute_formula,
     compute_expression,
+    compute_formula,
     evaluate_expression,
     format_value,
     list_formulas,

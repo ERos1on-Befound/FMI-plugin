@@ -25,9 +25,9 @@ from pydantic import Field
 from .config import (
     DISPLAY_NAME,
     SUBTITLE,
-    VERSION,
     SUPPORTED_INTERVALS,
     SUPPORTED_PERIODS,
+    VERSION,
     configure_logging,
     load_settings,
 )

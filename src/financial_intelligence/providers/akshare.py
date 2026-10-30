@@ -22,9 +22,6 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from ..models.financial_statements import (
-    BALANCE_FIELDS,
-    CASHFLOW_FIELDS,
-    INCOME_FIELDS,
     FinancialStatement,
     canonicalize,
     derive_balance,

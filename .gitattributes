@@ -1,0 +1,29 @@
+# 统一换行：源码与文档在仓库内一律 LF，检出到 Windows 时由 Git 处理
+* text=auto eol=lf
+
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+
+# Windows 脚本保留 CRLF，避免 cmd/PowerShell 兼容问题
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.zip binary
+
+# uv.lock 与生成文件在 diff 中折叠，减少 review 噪音
+uv.lock linguist-generated=true -diff

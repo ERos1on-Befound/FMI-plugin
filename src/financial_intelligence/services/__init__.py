@@ -13,7 +13,7 @@ from .chart_service import (
     ChartService,
 )
 from .fundamental_service import CORE_METRICS, SUPPORTED_PERIOD_TYPES, FundamentalService
-from .market_service import MarketService, OVERVIEW_GROUPS
+from .market_service import OVERVIEW_GROUPS, MarketService
 from .report_service import OUTPUT_FORMATS, REPORT_TYPES, ReportService
 from .technical_service import TechnicalService
 

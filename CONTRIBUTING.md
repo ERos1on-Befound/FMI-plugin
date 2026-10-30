@@ -13,6 +13,7 @@ uv sync
 要求 Python ≥ 3.12。运行检查：
 
 ```bash
+uv run ruff check .                 # 代码检查（CI 会跑，必须 0 问题）
 uv run python -m pytest -q          # 单元测试（离线，不依赖外网）
 uv run python scripts/smoke_test.py # 冒烟测试：启动 MCP、列工具、离线调用
 ```
@@ -66,7 +67,7 @@ uv run python scripts/check_phase3_mcp.py
 ## 提交规范
 
 - 一个提交只做一件事；提交信息用 `feat:` / `fix:` / `docs:` / `test:` / `chore:` 前缀。
-- 提交前跑：`uv run python -m pytest -q`（必须 0 失败）。
+- 提交前跑：`uv run ruff check .`（必须 0 问题）与 `uv run python -m pytest -q`（必须 0 失败）。
 - 不要提交 `.env`、密钥、Cookie、本机绝对路径或 `outputs/` 里的生成物。
 - 不要为了目录整齐重写 Git 历史或删除他人分支。
 

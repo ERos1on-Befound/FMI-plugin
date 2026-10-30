@@ -1,0 +1,49 @@
+name: Feature request / 功能建议
+description: 建议新增数据源、指标、图表类型或工具
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这个项目的边界是「公开免费数据 + 可复现计算 + 可追溯输出」。
+        涉及付费数据、交易执行、价格预测、投资建议的请求不会实现，请先看 README 的「项目限制」。
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 类型
+      options:
+        - 新增数据源
+        - 新增金融公式或指标
+        - 新增图表类型
+        - 新增报告模板
+        - 新增 / 改进 MCP 工具
+        - 文档与 Skill
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: 你希望解决什么问题
+      description: 描述使用场景，而不是直接给实现方案
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: 数据来源与可用性（如涉及数据）
+      description: 数据源是否免费、是否允许程序化访问、是否有速率限制、需要什么标识
+  - type: textarea
+    id: accuracy
+    attributes:
+      label: 如何验证正确性
+      description: 例如与哪个来源比对、用什么公式、期望的边界行为
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我确认这个需求属于公开免费数据的检索与计算范围
+          required: true
+        - label: 这个需求不涉及投资建议、交易执行或价格预测
+          required: true

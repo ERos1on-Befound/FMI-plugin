@@ -12,6 +12,14 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from fixtures import (
+    FakeFinancialProvider,
+    FakeMarket,
+    make_bars,
+    make_history,
+    make_settings,
+    make_statement,
+)
 
 from financial_intelligence.models.analysis_result import (
     ComparisonResult,
@@ -23,15 +31,6 @@ from financial_intelligence.services.chart_service import ChartService
 from financial_intelligence.services.fundamental_service import FundamentalService
 from financial_intelligence.services.technical_service import TechnicalService
 from financial_intelligence.utils.validators import InputError
-
-from fixtures import (
-    FakeFinancialProvider,
-    FakeMarket,
-    make_bars,
-    make_history,
-    make_settings,
-    make_statement,
-)
 
 
 class CurrencyProvider(FakeFinancialProvider):

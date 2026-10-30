@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 from mcp import Client, StdioServerParameters
+from test_services import FakeProvider
 
 from financial_intelligence import server
 from financial_intelligence.services import MarketService
-from test_services import FakeProvider
 
 pytestmark = pytest.mark.anyio
 

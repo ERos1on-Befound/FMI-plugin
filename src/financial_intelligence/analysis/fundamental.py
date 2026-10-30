@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 from ..models.analysis_result import DimensionAnalysis, Finding, MetricSeries
 from ..models.financial_statements import FinancialStatement
-from .financial_ratios import DIMENSIONS, DIMENSION_METRICS, DIMENSION_ORDER, table_for_series
+from .financial_ratios import DIMENSION_METRICS, DIMENSION_ORDER, DIMENSIONS, table_for_series
 
 SCOPE_ALL = "full"
 

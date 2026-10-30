@@ -11,6 +11,8 @@ from ..analysis.financial_ratios import (
     DIMENSION_ORDER,
     METRIC_SPECS,
     QuoteContext,
+)
+from ..analysis.financial_ratios import (
     compute_metrics as compute_metric_series,
 )
 from ..config import Settings, load_settings

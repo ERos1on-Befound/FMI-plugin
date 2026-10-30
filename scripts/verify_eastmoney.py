@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from financial_intelligence.config import load_settings, configure_logging  # noqa: E402
+from financial_intelligence.config import configure_logging, load_settings  # noqa: E402
 from financial_intelligence.providers.base import ProviderError  # noqa: E402
 from financial_intelligence.providers.eastmoney import (  # noqa: E402
     BREAKER,

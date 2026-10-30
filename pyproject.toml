@@ -5,13 +5,17 @@ description = "A Lightweight Financial Market Data Retrieval & Research Skill ex
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "Financial Market Intelligence" }]
+authors = [{ name = "ERos1on-Befound" }]
 keywords = ["finance", "market-data", "mcp", "yfinance", "akshare", "plotly", "charts", "reports"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Financial :: Investment",
 ]
 
 dependencies = [
@@ -27,8 +31,17 @@ dependencies = [
     "markdown>=3.11.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ERos1on-Befound/FMI-plugin"
+Repository = "https://github.com/ERos1on-Befound/FMI-plugin"
+Issues = "https://github.com/ERos1on-Befound/FMI-plugin/issues"
+Changelog = "https://github.com/ERos1on-Befound/FMI-plugin/blob/main/CHANGELOG.md"
+
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.17.3",
+]
 
 [project.scripts]
 financial-intelligence-mcp = "financial_intelligence.server:main"
@@ -50,3 +63,23 @@ markers = [
 
 [tool.coverage.run]
 source = ["financial_intelligence"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+    ".venv",
+    "outputs",
+    "artifacts",
+    "examples/images",
+]
+
+[tool.ruff.lint]
+# 只启用确定性的规则集：语法错误、未使用导入、导入顺序。
+# 格式化风格类规则（行宽、引号）交给 ruff format，不在 CI 里阻断。
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F401"]
+"scripts/**" = ["F401"]
+

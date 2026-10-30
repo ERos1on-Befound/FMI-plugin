@@ -1,4 +1,5 @@
 ﻿import traceback
+
 from financial_intelligence.config import load_settings
 from financial_intelligence.providers.akshare import AkshareFinancialProvider
 from financial_intelligence.utils.symbol_mapper import map_symbol

@@ -39,7 +39,13 @@ from ..schemas import (
     utc_now,
 )
 from ..utils.symbol_mapper import SYMBOL_HELP, map_symbol
-from ..utils.validators import InputError, parse_asset_type, parse_market, parse_period, parse_interval, validate_period_interval
+from ..utils.validators import (
+    parse_asset_type,
+    parse_interval,
+    parse_market,
+    parse_period,
+    validate_period_interval,
+)
 
 logger = logging.getLogger(__name__)
 
