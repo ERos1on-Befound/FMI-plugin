@@ -80,8 +80,8 @@ flowchart TD
 ## 5. 安装
 
 ```bash
-git clone <repository-url>
-cd financial-market-intelligence
+git clone https://github.com/ERos1on-Befound/FMI-plugin.git
+cd FMI-plugin
 uv sync
 ```
 

@@ -45,3 +45,6 @@ outputs/charts/*
 outputs/reports/*
 !outputs/charts/.gitkeep
 !outputs/reports/.gitkeep
+
+# local development outputs (probe dumps, verification results)
+artifacts/
