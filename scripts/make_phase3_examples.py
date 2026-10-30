@@ -157,9 +157,10 @@ def build_chart_gallery() -> list[str]:
     try:
         comparison = charts.comparison("AAPL,MSFT,NVDA", metric="price", period="6mo", normalization="base_100")
         html = str(Path(comparison.html_path).relative_to(ROOT)) if comparison.html_path else "—"
+        png = str(Path(comparison.png_path).relative_to(ROOT)) if comparison.png_path else "—"
         lines.append(
             f"| {comparison.chart_name} | 多标的 | {comparison.chart_type} | {comparison.data_range or '—'} "
-            f"| {comparison.metadata.points} | {comparison.source} | {comparison.status} | {html} | — |"
+            f"| {comparison.metadata.points} | {comparison.source} | {comparison.status} | {html} | {png} |"
         )
     except Exception as exc:  # noqa: BLE001
         print(f"comparison: {exc}")

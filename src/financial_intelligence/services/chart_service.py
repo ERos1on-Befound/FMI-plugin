@@ -572,16 +572,41 @@ class ChartService:
         for row, (_, sub) in enumerate(panels, start=1):
             for trace in sub.data:
                 fig.add_trace(trace, row=row, col=1)
+        # hlines/shapes live on the source figure, so re-add the panel guides
+        # that make the RSI and MACD panels readable after merging.
+        for row, (label, _sub) in enumerate(panels, start=1):
+            if "RSI" in label:
+                for level in (30.0, 50.0, 70.0):
+                    fig.add_hline(
+                        y=level,
+                        line=dict(color=theme.GRID_COLOR, width=1, dash="dot"),
+                        row=row,
+                        col=1,
+                    )
+            elif "MACD" in label:
+                fig.add_hline(
+                    y=0.0,
+                    line=dict(color=theme.AXIS_LINE, width=1),
+                    row=row,
+                    col=1,
+                )
         layout = theme.base_layout(
             title=title,
             subtitle=subtitle,
             height=230 + 260 * count,
             showlegend=True,
-            margin=dict(l=60, r=30, t=110, b=110),
+            margin=dict(l=60, r=30, t=118, b=118),
         )
         layout.pop("xaxis", None)
         layout.pop("yaxis", None)
+        # ``update_layout`` replaces the whole annotations list, which would drop
+        # the subplot titles created by make_subplots; add the subtitle afterwards.
+        extra_annotations = layout.pop("annotations", [])
+        # A shared legend below the panels keeps it clear of the per-panel titles.
+        layout["legend"] = dict(orientation="h", yanchor="top", y=-0.035, xanchor="left", x=0.0)
         fig.update_layout(**layout)
+        for annotation in extra_annotations:
+            fig.add_annotation(**annotation)
         fig.update_annotations(font=dict(size=12, color=theme.MUTED))
         return fig
 

@@ -11,7 +11,7 @@
 | `candlestick` | K 线图（开高低收） | 历史 OHLCV | 有成交量时自动加成交量副图；少于 2 根 K 线直接报错，不生成空图 |
 | `volume` | 成交量柱状图 | 历史 OHLCV 且必须有成交量 | 数据源不提供成交量时返回 `unavailable`，**绝不用 0 伪造** |
 | `technical` | 技术指标面板 | 历史 OHLCV | `indicators` 选 `ma` / `macd` / `rsi` / `bollinger` / `atr`；不指定时默认 `ma,macd,rsi` |
-| `fundamental` | 财务趋势 | 定期报告 | `indicators` 选 `revenue` / `net_income` / `gross_margin` / `net_margin` / `roe` / `cash_flow` / `free_cash_flow`；默认 `revenue,net_income` |
+| `fundamental` | 财务趋势 | 定期报告 | `indicators`（或服务层的 `metrics`）选 `revenue` / `net_income` / `gross_margin` / `net_margin` / `roe` / `cash_flow` / `free_cash_flow`；默认 `revenue,net_income` |
 
 ## 对比图（`generate_comparison_chart`）
 

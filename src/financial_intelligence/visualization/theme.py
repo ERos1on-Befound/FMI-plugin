@@ -148,31 +148,25 @@ def base_layout(
     margin: dict[str, int] | None = None,
 ) -> dict:
     """Return the shared layout dictionary for a figure."""
-    annotations: list[dict] = []
+    title_block: dict = dict(
+        text=title, x=0.01, xanchor="left", font=dict(size=18, color=PRIMARY)
+    )
     if subtitle:
-        annotations.append(
-            dict(
-                text=subtitle,
-                xref="paper",
-                yref="paper",
-                x=0,
-                y=1.04,
-                xanchor="left",
-                yanchor="bottom",
-                showarrow=False,
-                font=dict(size=12, color=MUTED),
-            )
+        # Rendering the subtitle through plotly's own title block keeps it
+        # aligned under the title for every figure height (no manual offsets).
+        title_block["subtitle"] = dict(
+            text=subtitle, font=dict(size=12, color=MUTED)
         )
     return dict(
-        title=dict(text=title, x=0.01, xanchor="left", font=dict(size=18, color=PRIMARY)),
+        title=title_block,
         font=dict(family=FONT_FAMILY, size=12, color="#1f2937"),
         height=height,
-        margin=margin or dict(l=60, r=30, t=86, b=96),
+        margin=margin or dict(l=60, r=30, t=104, b=96),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
         hovermode="x unified",
         showlegend=showlegend,
-        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1.0),
+        legend=dict(orientation="h", yanchor="bottom", y=1.005, xanchor="right", x=1.0),
         xaxis=dict(
             title=dict(text=x_title, font=dict(size=12, color=MUTED)),
             showgrid=False,
@@ -190,7 +184,6 @@ def base_layout(
             linecolor=AXIS_LINE,
             tickfont=dict(size=11, color=MUTED),
         ),
-        annotations=annotations,
     )
 
 
