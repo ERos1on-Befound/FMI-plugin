@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 from ..config import Settings
+from ..models.financial_statements import FinancialStatement
 from ..schemas import DataStatus, HistoricalBar, HistoricalData, Quote, iso, utc_now
 from ..utils.bars import cap_bars, resample_bars, window_bars
 from ..utils.symbol_mapper import SymbolSpec
@@ -116,6 +117,31 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def get_history(self, spec: SymbolSpec, period: str, interval: str) -> HistoricalData:
         """Return a historical series or raise :class:`ProviderError`."""
+
+    def close(self) -> None:
+        """Release any long-lived resources; default is a no-op."""
+
+
+class FinancialDataProvider(ABC):
+    """Base class for a source of published financial statements."""
+
+    name: str = "base"
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def supports_financials(self, spec: SymbolSpec) -> bool:  # noqa: ARG002 - default none
+        return False
+
+    @abstractmethod
+    def get_financials(
+        self,
+        spec: SymbolSpec,
+        *,
+        period_type: str = "annual",
+        limit: int = 5,
+    ) -> list[FinancialStatement]:
+        """Return statements ordered newest first, or raise :class:`ProviderError`."""
 
     def close(self) -> None:
         """Release any long-lived resources; default is a no-op."""

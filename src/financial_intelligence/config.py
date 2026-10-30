@@ -20,7 +20,7 @@ from typing import Mapping
 PACKAGE_NAME = "financial-market-intelligence"
 DISPLAY_NAME = "Financial Market Intelligence"
 SUBTITLE = "A Lightweight Financial Market Data Retrieval & Research Skill"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 #: Supported history windows, in the order they are advertised.
 SUPPORTED_PERIODS: tuple[str, ...] = ("1mo", "3mo", "6mo", "1y", "2y", "5y")
@@ -119,6 +119,16 @@ class Settings:
     #: How long to stop calling Eastmoney after a dropped connection (seconds).
     eastmoney_cooldown: float = 300.0
 
+    # --- financial statements (SEC EDGAR) ---
+    #: Statement providers, tried in order for every financial request.
+    enable_sec: bool = True
+    financial_provider_order: tuple[str, ...] = ("sec", "akshare")
+    #: SEC asks for a descriptive User-Agent with a contact address.  Replace the
+    #: default placeholder before heavy use (``FMI_SEC_USER_AGENT``).
+    sec_user_agent: str = "financial-market-intelligence/0.2 (research use; contact: set-FMI_SEC_USER_AGENT)"
+    #: How long a downloaded set of SEC facts / statements is reused (seconds).
+    financial_cache_ttl: float = 12 * 3600.0
+
     # --- data freshness thresholds (seconds) ---
     #: A quote whose market timestamp is older than this is reported as ``stale``.
     stale_after: float = 10 * 24 * 3600.0
@@ -153,11 +163,21 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         enable_eastmoney=_env_bool(source, "FMI_ENABLE_EASTMONEY", True),
         enable_akshare=_env_bool(source, "FMI_ENABLE_AKSHARE", True),
         enable_yfinance=_env_bool(source, "FMI_ENABLE_YFINANCE", True),
+        enable_sec=_env_bool(source, "FMI_ENABLE_SEC", True),
+        financial_provider_order=_env_order(
+            source, "FMI_FINANCIAL_PROVIDER_ORDER", ("sec", "akshare")
+        ),
         provider_order=_env_order(
             source, "FMI_PROVIDER_ORDER", ("sina", "eastmoney", "akshare", "yahoo")
         ),
         eastmoney_min_interval=_env_float(source, "FMI_EASTMONEY_MIN_INTERVAL", 1.0),
         eastmoney_cooldown=_env_float(source, "FMI_EASTMONEY_COOLDOWN", 300.0),
+        sec_user_agent=_env_str(
+            source,
+            "FMI_SEC_USER_AGENT",
+            "financial-market-intelligence/0.2 (research use; contact: set-FMI_SEC_USER_AGENT)",
+        ),
+        financial_cache_ttl=_env_float(source, "FMI_FINANCIAL_CACHE_TTL", 12 * 3600.0),
         stale_after=_env_float(source, "FMI_STALE_AFTER_DAYS", 10.0) * 86400.0,
         log_level=_env_str(source, "FMI_LOG_LEVEL", "INFO").upper(),
     )
