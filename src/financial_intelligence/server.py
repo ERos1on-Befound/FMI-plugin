@@ -1,8 +1,9 @@
 """MCP server exposing the Financial Market Intelligence tool surface.
 
-Six tools are registered here; every one of them returns a typed model from
-:mod:`financial_intelligence.schemas`, so the MCP clients get a real output
-schema (not a free-form string).
+Fourteen tools are registered here; every one of them returns a typed model
+from :mod:`financial_intelligence.schemas` or
+:mod:`financial_intelligence.models`, so MCP clients get a real output schema
+(not a free-form string).
 
 Run it with::
 
@@ -30,6 +31,16 @@ from .config import (
     configure_logging,
     load_settings,
 )
+from .models.analysis_result import (
+    ComparisonResult,
+    FormulaResult,
+    FundamentalsResult,
+    MetricsResult,
+    Provenance,
+    SupportedIndicatorsResult,
+    TechnicalResult,
+)
+from .models.financial_statements import FinancialStatements
 from .schemas import (
     AssetType,
     DataStatus,
@@ -42,7 +53,7 @@ from .schemas import (
     iso,
     utc_now,
 )
-from .services import MarketService
+from .services import CalculationService, FundamentalService, MarketService, TechnicalService
 from .utils.symbol_mapper import SYMBOL_HELP
 from .utils.validators import InputError
 
@@ -52,23 +63,36 @@ INSTRUCTIONS = f"""\
 {DISPLAY_NAME} — {SUBTITLE}
 
 使用顺序建议：
-1. 先调用 get_server_status 确认服务可用、看看启用了哪些数据源。
+1. 先调用 get_server_status 确认服务可用、看看启用了哪些数据源；
+   不确定指标名/公式名时调用 get_supported_indicators。
 2. 不确定代码格式时调用 get_supported_markets，或直接参考下列约定：
 {SYMBOL_HELP}
 3. 单只资产 → get_stock_quote（股票/ETF/指数）或 get_asset_quote（指数/商品等通用）。
 4. 历史K线 → get_historical_data（period ∈ {", ".join(SUPPORTED_PERIODS)}；
    interval ∈ {", ".join(SUPPORTED_INTERVALS)}）。
 5. 需要横向看盘 → get_market_overview（固定覆盖 A股/港股/美股/大宗商品）。
+6. 财务报表 → get_company_financials（annual / quarterly）。
+7. 算指标 → calculate_financial_metrics（多指标多期）；自定义口径 → calculate_financial_formula。
+8. 技术指标 → get_technical_indicators、analyze_technicals。
+9. 结构化分析 → analyze_fundamentals、compare_companies。
 
 硬性约束（回答用户时必须遵守）：
 - 数据全部来自免费公开接口，不能声称是实时行情；yfinance / AKShare / 新浪快照一律按 delayed 处理。
 - 必须同时给出「行情时间 timestamp」和「获取时间 retrieved_at」，不能混为一谈。
 - 期货代码（GC=F / CL=F / BZ=F）是期货合约参考价，不是现货价格。
 - 价格为 null 时就是没有数据，禁止编造或用 0 填充；把 error 字段里的真实原因告诉用户。
-- 只做数据检索与整理，不构成投资建议。
+- 财报必须区分报告期（period_end）、报告发布日（filing_date）与获取时间（retrieved_at）；
+  A股季报是年初至今累计口径，跨境比较前先检查币种与报告期是否一致。
+- 指标要么是原始数据、要么是公式计算结果，都要给出公式与来源；数据不足就说 insufficient_data，
+  公式不适用就说 not_applicable，禁止拿 0 顶替缺失值。
+- 技术指标只描述历史状态，不预测涨跌，不给目标价与买卖信号。
+- 只做数据检索、计算与整理，不构成投资建议。
 """
 
 _service: MarketService | None = None
+_fundamental_service: FundamentalService | None = None
+_technical_service: TechnicalService | None = None
+_calculation_service: CalculationService | None = None
 
 
 def get_service() -> MarketService:
@@ -77,6 +101,95 @@ def get_service() -> MarketService:
     if _service is None:
         _service = MarketService(load_settings())
     return _service
+
+
+def get_fundamental_service() -> FundamentalService:
+    global _fundamental_service
+    if _fundamental_service is None:
+        _fundamental_service = FundamentalService(load_settings())
+    return _fundamental_service
+
+
+def get_technical_service() -> TechnicalService:
+    global _technical_service
+    if _technical_service is None:
+        _technical_service = TechnicalService(load_settings())
+    return _technical_service
+
+
+def get_calculation_service() -> CalculationService:
+    global _calculation_service
+    if _calculation_service is None:
+        _calculation_service = CalculationService(load_settings())
+    return _calculation_service
+
+
+def _unavailable_provenance(symbol: str, *, source: str = "unavailable") -> Provenance:
+    return Provenance(
+        symbol=str(symbol).strip().upper(),
+        source=source,
+        retrieved_at=iso(utc_now()) or "",
+        data_status=DataStatus.UNAVAILABLE,
+        notes=[],
+    )
+
+
+def _unavailable_financials(symbol: str, exc: Exception, period_type: str) -> FinancialStatements:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return FinancialStatements(
+        symbol=str(symbol).strip().upper(),
+        market=Market.UNKNOWN,
+        period_type=period_type,  # type: ignore[arg-type]
+        data_status=DataStatus.UNAVAILABLE,
+        retrieved_at=iso(utc_now()) or "",
+        error=f"{exc}{hint}",
+        notes=["数据缺失不等于公司没有披露，也不代表数值为 0。"],
+    )
+
+
+def _unavailable_metrics(symbol: str, exc: Exception, period_type: str) -> MetricsResult:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return MetricsResult(
+        symbol=str(symbol).strip().upper(),
+        period_type=period_type,
+        requested_metrics=[],
+        metrics=[],
+        provenance=_unavailable_provenance(symbol),
+        data_status=DataStatus.UNAVAILABLE,
+        error=f"{exc}{hint}",
+        notes=[],
+    )
+
+
+def _unavailable_technicals(symbol: str, exc: Exception, period: str, interval: str) -> TechnicalResult:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return TechnicalResult(
+        symbol=str(symbol).strip().upper(),
+        period=period,
+        interval=interval,
+        indicators=[],
+        summary=[],
+        provenance=_unavailable_provenance(symbol),
+        data_status=DataStatus.UNAVAILABLE,
+        error=f"{exc}{hint}",
+        notes=[],
+    )
+
+
+def _unavailable_fundamentals(symbol: str, exc: Exception) -> FundamentalsResult:
+    hint = f" {SYMBOL_HELP}" if isinstance(exc, InputError) else ""
+    return FundamentalsResult(
+        symbol=str(symbol).strip().upper(),
+        market=Market.UNKNOWN,
+        dimensions=[],
+        observations=[],
+        limitations=["无法获取财务报表，因此没有生成任何结论。"],
+        metric_tables={},
+        valuation=[],
+        provenance=_unavailable_provenance(symbol),
+        data_status=DataStatus.UNAVAILABLE,
+        error=f"{exc}{hint}",
+    )
 
 
 def _unavailable_quote(raw_symbol: str, exc: Exception, *, asset_type: str | None = None) -> Quote:
@@ -265,6 +378,384 @@ def build_server() -> Any:
         except InputError as exc:
             logger.info("bad asset input %r: %s", symbol, exc)
             return _unavailable_quote(symbol, exc, asset_type=asset_type)
+
+    @mcp.tool()
+    def get_company_financials(
+        symbol: Annotated[
+            str,
+            Field(description="公司代码：美股 AAPL / MSFT / NVDA；港股 0700.HK；A股 600519.SS / 000001.SZ。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US；省略时按代码自动判断。"),
+        ] = None,
+        period_type: Annotated[
+            str,
+            Field(description="报告期类型：annual（年报）或 quarterly（季报）。ttm 目前不支持（免费源无法可靠拼接）。"),
+        ] = "annual",
+        limit: Annotated[
+            int,
+            Field(description="返回最近多少期，1–10，默认 5。"),
+        ] = 5,
+    ) -> FinancialStatements:
+        """获取公司的标准化财务报表（利润表 / 资产负债表 / 现金流量表）。
+
+        Args:
+            symbol: 公司代码，如 AAPL、MSFT、0700.HK、600519.SS。
+            market: 可选市场提示（CN / HK / US）。
+            period_type: annual（年报）或 quarterly（季报）；A股季报是年初至今累计口径，
+                结果里的 cumulative=True 会明确标注。
+            limit: 返回最近多少期（1–10）。
+
+        返回字段包含 symbol、company_name、currency、unit、unit_scale、fiscal_period、
+        period_type、period_start、period_end、filing_date、source、三张报表的标准化字段
+        （income_statement / balance_sheet / cash_flow_statement）、raw_items（原始科目）、
+        matched_items（命中的原始科目名）、derived_fields（推导出来的字段）、missing_fields、
+        data_status 与 retrieved_at。
+
+        必须区分：报告期（period_end）、报告发布日（filing_date，可能为空）、本次获取时间
+        （retrieved_at）。缺失字段是 null——不要当成 0，也不要说公司没有披露。
+        """
+        try:
+            return get_fundamental_service().get_financials(
+                symbol, market=market, period_type=period_type, limit=limit
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad financials input %r: %s", symbol, exc)
+            return _unavailable_financials(symbol, exc, period_type)
+
+    @mcp.tool()
+    def calculate_financial_metrics(
+        symbol: Annotated[
+            str,
+            Field(description="公司代码，如 AAPL、0700.HK、600519.SS。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+        metrics: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "逗号分隔的指标名，例如 gross_margin,net_margin,roe。"
+                    "可选：gross_margin / operating_margin / net_margin / roe / roa / debt_ratio / "
+                    "current_ratio / quick_ratio / interest_coverage / asset_turnover / "
+                    "receivables_turnover / inventory_turnover / revenue_growth / net_income_growth / "
+                    "eps_growth / free_cash_flow / cfo_to_net_income / pe / pb / ps / dividend_yield。"
+                    "省略时只计算与常见问题相关的一组核心指标，不会默认算全部。"
+                )
+            ),
+        ] = None,
+        period_type: Annotated[
+            str,
+            Field(description="报告期类型：annual 或 quarterly。"),
+        ] = "annual",
+        periods: Annotated[
+            int | None,
+            Field(description="返回最近多少期（annual 默认 3，quarterly 默认 4）。"),
+        ] = None,
+    ) -> MetricsResult:
+        """从真实财务报表计算一组财务指标（含多期序列与趋势）。
+
+        Args:
+            symbol: 公司代码。
+            market: 可选市场提示。
+            metrics: 逗号分隔的指标名；省略时只算核心指标（gross_margin、net_margin、roe、
+                debt_ratio、revenue_growth、free_cash_flow）。
+            period_type: annual 或 quarterly。
+            periods: 期数。
+
+        每个指标返回 value、unit、display、formula、inputs、input_fields、calculation_status、
+        explanation、source、currency、filing_date。calculation_status 取 ok /
+        insufficient_data（数据不全）/ not_applicable（公式不适用，例如亏损公司的 PE）。
+        估值指标需要同币种的最新股价，币种不一致时不会生成（港股以人民币报表、港币交易的
+        情况就是这样），这是刻意的，不要用其他市场的价格替代。
+        """
+        try:
+            service = get_fundamental_service()
+            names = [item.strip() for item in (metrics or "").split(",") if item.strip()]
+            return service.compute_metrics(
+                symbol, market=market, metrics=names or None, period_type=period_type, periods=periods
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad metrics input %r: %s", symbol, exc)
+            return _unavailable_metrics(symbol, exc, period_type)
+
+    @mcp.tool()
+    def calculate_financial_formula(
+        formula_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "已注册公式名，例如 compound_interest / yoy_growth / qoq_growth / cagr / "
+                    "free_cash_flow / return_on_equity / gross_margin / pe / roe。"
+                    "填 custom_expression 时用 expression 传入自定义表达式。"
+                )
+            ),
+        ],
+        inputs: Annotated[
+            dict[str, Any] | None,
+            Field(
+                description=(
+                    "公式输入，JSON 对象，例如 {\"current\": 120, \"previous\": 100}。"
+                    "custom_expression 时用 {\"expression\": \"(a - b) / b * 100\", \"variables\": {\"a\": 120, \"b\": 100}}。"
+                )
+            ),
+        ] = None,
+    ) -> FormulaResult:
+        """用注册好的公式做安全的金融计算（不执行任意代码）。
+
+        Args:
+            formula_name: 公式名（见 get_supported_indicators 的 formulas）。
+            inputs: 输入值字典；缺失或非数值会返回 insufficient_data 并说明。
+
+        每个公式都带名称、描述、表达式、输入定义、单位、适用条件与缺失数据处理规则。
+        未注册的公式不会被猜测执行；想算自定义口径请用 custom_expression，
+        它只允许基础算术（+ - * / ** %）与 sqrt/abs/min/max/round/log/ln/log10/exp，
+        禁止属性访问、下标、导入或任何 Python 代码。
+        """
+        try:
+            return get_calculation_service().calculate(formula_name, inputs or {})
+        except ValueError as exc:
+            logger.info("bad formula input %r: %s", formula_name, exc)
+            return FormulaResult(
+                formula_name=str(formula_name),
+                inputs={},
+                calculation_status="not_applicable",
+                explanation=str(exc),
+            )
+
+    @mcp.tool()
+    def get_technical_indicators(
+        symbol: Annotated[
+            str,
+            Field(description="资产代码，如 NVDA、AAPL、0700.HK、600519.SS。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+        period: Annotated[
+            str,
+            Field(description="历史窗口，可选 1mo / 3mo / 6mo / 1y / 2y / 5y，默认 6mo。"),
+        ] = "6mo",
+        interval: Annotated[
+            str,
+            Field(description="K线间隔，可选 1d / 1wk / 1mo，默认 1d。"),
+        ] = "1d",
+        indicators: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "逗号分隔的指标族或具体指标，例如 sma,rsi,macd 或 sma_20,macd_histogram。"
+                    "可选族：sma（5/10/20/60）、ema（12/26）、rsi（14）、macd（12,26,9）、"
+                    "bollinger（20,2σ）、atr（14）。省略时返回全部默认指标。"
+                )
+            ),
+        ] = None,
+    ) -> TechnicalResult:
+        """计算真实历史行情上的技术指标（SMA / EMA / RSI / MACD / 布林带 / ATR）。
+
+        Args:
+            symbol: 资产代码。
+            market: 可选市场提示。
+            period: 历史窗口。
+            interval: K线间隔。
+            indicators: 指标选择（族名或具体名，逗号分隔）；省略时用默认组合。
+
+        返回 window_start / window_end / bars / indicators / summary 与 provenance。
+        每个指标含 params、value、previous_value、change、change_pct、date、history、status、
+        explanation。计算口径：EMA 以首个收盘价为种子（adjust=False，α=2/(n+1)）；RSI 用
+        Wilder 平滑（首值为前 14 期简单平均）；MACD 柱 = DIF − DEA；布林带 σ 用总体标准差
+        （ddof=0）；ATR 的 TR 从第二根 K 线起算。历史不足时该指标返回 insufficient_data。
+
+        这些数字只描述历史状态，不能用来预测涨跌；不要据此给出买卖信号或目标价。
+        """
+        try:
+            service = get_technical_service()
+            selection = [item.strip() for item in (indicators or "").split(",") if item.strip()]
+            return service.get_indicators(
+                symbol,
+                market=market,
+                period=period,
+                interval=interval,
+                indicators=selection or None,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad indicator input %r: %s", symbol, exc)
+            return _unavailable_technicals(symbol, exc, period, interval)
+
+    @mcp.tool()
+    def analyze_fundamentals(
+        symbol: Annotated[
+            str,
+            Field(description="公司代码，如 AAPL、0700.HK、600519.SS。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+        analysis_scope: Annotated[
+            str,
+            Field(
+                description=(
+                    "分析范围：full（全部维度）/ profitability（盈利）/ solvency（偿债）/ "
+                    "efficiency（运营）/ growth（成长）/ cash_flow（现金流）/ valuation（估值）。"
+                )
+            ),
+        ] = "full",
+        period_type: Annotated[
+            str,
+            Field(description="报告期类型：annual 或 quarterly。"),
+        ] = "annual",
+        periods: Annotated[
+            int | None,
+            Field(description="多期比较的期数（annual 默认 3，quarterly 默认 4）。"),
+        ] = None,
+    ) -> FundamentalsResult:
+        """基于真实财报做结构化基本面分析（盈利 / 偿债 / 运营 / 成长 / 现金流 / 估值）。
+
+        Args:
+            symbol: 公司代码。
+            market: 可选市场提示。
+            analysis_scope: full 或单个维度。
+            period_type: annual 或 quarterly。
+            periods: 期数。
+
+        返回公司信息、currency/unit、fiscal_period、filing_date、dimensions（每维度含
+        findings 与状态）、observations（多期变化）、metric_tables（指标|各期|趋势）、
+        valuation、limitations 与 provenance。
+
+        状态只会是 positive / negative / neutral / insufficient_data / not_applicable，
+        并且由明确规则与真实数据决定。本项目不提供行业基准，所以不会给出“优秀/糟糕”的
+        绝对评价，也不会编造行业平均值；数据不足时会明确说明无法判断。
+        """
+        try:
+            return get_fundamental_service().analyze(
+                symbol,
+                market=market,
+                scope=analysis_scope,
+                period_type=period_type,
+                periods=periods,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad fundamentals input %r: %s", symbol, exc)
+            return _unavailable_fundamentals(symbol, exc)
+
+    @mcp.tool()
+    def analyze_technicals(
+        symbol: Annotated[
+            str,
+            Field(description="资产代码，如 NVDA、AAPL、0700.HK、600519.SS。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示，取值 CN / HK / US。"),
+        ] = None,
+        period: Annotated[
+            str,
+            Field(description="历史窗口，可选 1mo / 3mo / 6mo / 1y / 2y / 5y，默认 6mo。"),
+        ] = "6mo",
+        interval: Annotated[
+            str,
+            Field(description="K线间隔，可选 1d / 1wk / 1mo，默认 1d。"),
+        ] = "1d",
+        indicators: Annotated[
+            str | None,
+            Field(description="逗号分隔的指标选择，省略时使用默认组合。"),
+        ] = None,
+    ) -> TechnicalResult:
+        """在真实历史行情上做技术面分析，输出指标数值与历史状态描述。
+
+        Args:
+            symbol: 资产代码。
+            market: 可选市场提示。
+            period: 历史窗口。
+            interval: K线间隔。
+            indicators: 指标选择。
+
+        与 get_technical_indicators 返回同一套结构，summary 是可直接引用的状态描述，
+        例如“收盘价高于 MA20”“MA5 高于 MA20”“RSI(14) 处于相对高位区间”。
+        这些描述只说明历史状态，不预测未来，也不构成买卖建议。
+        """
+        try:
+            service = get_technical_service()
+            selection = [item.strip() for item in (indicators or "").split(",") if item.strip()]
+            return service.get_indicators(
+                symbol,
+                market=market,
+                period=period,
+                interval=interval,
+                indicators=selection or None,
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad technical input %r: %s", symbol, exc)
+            return _unavailable_technicals(symbol, exc, period, interval)
+
+    @mcp.tool()
+    def compare_companies(
+        symbols: Annotated[
+            str,
+            Field(description="逗号分隔的公司代码，例如 AAPL,MSFT 或 600519.SS,000858.SZ。"),
+        ],
+        market: Annotated[
+            str | None,
+            Field(description="可选市场提示；混市场比较时省略。"),
+        ] = None,
+        metrics: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "逗号分隔的指标名；省略时用 gross_margin,operating_margin,net_margin,roe,roa。"
+                )
+            ),
+        ] = None,
+        period_type: Annotated[
+            str,
+            Field(description="报告期类型：annual 或 quarterly。"),
+        ] = "annual",
+    ) -> ComparisonResult:
+        """横向比较多家公司同一组财务指标，并检查可比性。
+
+        Args:
+            symbols: 逗号分隔的代码列表。
+            market: 可选市场提示。
+            metrics: 指标名列表，省略时用盈利能力五项。
+            period_type: annual 或 quarterly。
+
+        返回 rows（每行是一个指标在多家公司上的值）、comparability_notes 与 warnings。
+        只有在报告期、币种、金额单位与口径都一致时 comparable 才为 True；不一致会
+        明确列出原因（例如报告期不同、币种不同），并且不会强行排名或选出“最好的公司”。
+        """
+        try:
+            names = [item.strip() for item in str(symbols or "").split(",") if item.strip()]
+            return get_fundamental_service().compare(
+                names, market=market, metrics=metrics, period_type=period_type
+            )
+        except (InputError, ValueError) as exc:
+            logger.info("bad compare input %r: %s", symbols, exc)
+            return ComparisonResult(
+                requested_symbols=[item.strip() for item in str(symbols or "").split(",") if item.strip()],
+                metric_names=[],
+                rows=[],
+                comparability_notes=[],
+                warnings=[],
+                provenance=_unavailable_provenance(symbols),
+                data_status=DataStatus.UNAVAILABLE,
+                error=str(exc),
+            )
+
+    @mcp.tool()
+    def get_supported_indicators() -> SupportedIndicatorsResult:
+        """列出所有可用的公式、财务指标与技术指标，以及各数据源的当前状态。
+
+        返回 formulas（公式名、说明、输入、单位）、metrics（21 个财务指标）、
+        technical（6 族技术指标）与 data_sources（含 available / throttled /
+        rate_limited 状态）。不确定某个指标名怎么写、或想知道某个数据源是否可用时
+        先调用本工具。
+        """
+        return get_calculation_service().supported()
 
     return mcp
 

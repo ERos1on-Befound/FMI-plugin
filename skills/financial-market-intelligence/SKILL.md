@@ -1,131 +1,242 @@
 ---
 name: financial-market-intelligence
-description: 通过本地 MCP 服务检索全球主要市场的股票、指数与大宗商品（期货参考价）行情与历史K线；覆盖 A股/港股/美股/商品，数据来自免费公开接口，一律按延迟行情处理。需要"查某个代码现在多少钱、最近涨跌如何、某段时间的K线、扫一眼大盘"时使用本技能。
+description: 通过本地 MCP 服务做轻量金融数据检索与研究：行情与历史K线（A股/港股/美股/商品）、公司财务报表（美股 SEC EDGAR、A股/港股交易所与披露易镜像）、金融公式计算、基本面五维分析、技术指标计算与公司横向对比。需要"查价格、看K线、读财报、算财务指标、分析某公司基本面或技术面、比较两家公司"时使用本技能。所有数值来自免费公开接口，一律按延迟/历史数据处理，不构成投资建议。
 ---
 
 # Financial Market Intelligence（FMI）
 
-一个**轻量**的金融市场数据检索技能：把免费公开行情源包装成 6 个 MCP 工具，让模型能查到
-A股 / 港股 / 美股 / 国际大宗商品的价格、涨跌与历史K线，并把**数据来源、行情时间、获取时间、
-币种、数据状态**如实交代清楚。
+一个**轻量**的金融数据检索与研究技能：14 个 MCP 工具，覆盖四个模块 ——
+**数据获取**（行情、历史K线、财务报表）、**金融公式计算**、**基本面分析**、**技术面分析**。
 
-它不是交易终端，也不是投资顾问：只做数据检索与整理。
+它把「数据从哪来、报告期是哪一段、用什么币种和单位、公式怎么算、结论依据是什么」全部写进返回值，
+让模型只做**转述与整理**，不做心算、不编数据、不给买卖建议。
 
 ## 1. 什么时候用
 
-| 用户想做的事 | 用本技能 |
-| --- | --- |
-| 「AAPL 现在多少钱」「腾讯股价」「茅台今天涨了多少」 | ✅ 单只报价 |
-| 「上证指数最近怎么样」「恒指和恒生科技呢」 | ✅ 指数报价 / 市场概览 |
-| 「黄金/原油什么价」 | ✅ 商品报价（**期货合约参考价**，见第 5 节） |
-| 「给我茅台最近三个月的周K」「拿一下苹果近一年的日线」 | ✅ 历史K线 |
-| 「今天大盘什么情况」 | ✅ 市场概览（A股/港股/美股/商品四组） |
-| 「该不该买」「预测明天涨跌」「给个目标价」 | ❌ 不做投资建议，只能提供数据与事实 |
-| 需要逐笔、盘口五档、Level-2、分钟级实时 | ❌ 免费源不提供，如实告知限制 |
-| 需要财务报表、新闻、研报 | ❌ 本技能不覆盖 |
+| 用户想做的事 | 用本技能 | 用什么 |
+| --- | --- | --- |
+| 「AAPL 现在多少钱」「腾讯股价」「茅台今天涨了多少」 | ✅ | `get_stock_quote` |
+| 「黄金/原油什么价」 | ✅ | `get_asset_quote`（**期货合约参考价**，见第 8 节） |
+| 「给我茅台最近三个月的周K」「苹果近一年日线」 | ✅ | `get_historical_data` |
+| 「今天大盘什么情况」 | ✅ | `get_market_overview` |
+| 「苹果 2025 财年营收多少」「茅台利润表」 | ✅ | `get_company_financials` |
+| 「算一下毛利率/ROE/资产负债率」「做一个三年营收 CAGR」 | ✅ | `calculate_financial_metrics` / `calculate_financial_formula` |
+| 「分析一下苹果的基本面」「比较苹果和微软的盈利能力」 | ✅ | `analyze_fundamentals` / `compare_companies` |
+| 「英伟达近半年技术面」「RSI 多少、MACD 金叉没有」 | ✅ | `get_technical_indicators` / `analyze_technicals` |
+| 「有哪些指标可以算」 | ✅ | `get_supported_indicators` |
+| 「该不该买」「预测明天涨跌」「给个目标价」「帮我回测」 | ❌ | 不做投资建议、不做预测、不做回测，只能提供数据、计算与方法说明 |
+| 逐笔/盘口五档/Level-2/分钟级实时、行业基准与同业百分位 | ❌ | 免费源不提供，如实说明 |
+| 新闻、研报、政策解读 | ❌ | 不在范围内 |
 
-## 2. 六个工具
+## 2. 十四个工具
+
+### 行情类（第一阶段）
 
 | 工具 | 用途 | 关键参数 | 主要返回 |
 | --- | --- | --- | --- |
 | `get_server_status` | 健康检查：版本、启用的数据源 | — | `status`、`providers`、`notes` |
-| `get_supported_markets` | 支持的市场/资产类型/周期/间隔 + 代码写法 | — | `markets`、`periods`、`intervals`、`notes` |
+| `get_supported_markets` | 支持的市场/资产类型/周期/间隔/代码写法 | — | `markets`、`periods`、`intervals`、`notes` |
 | `get_stock_quote` | 单只股票/ETF/指数报价 | `symbol`、`market?` | `Quote` |
-| `get_asset_quote` | 通用资产报价（指数、期货、别名） | `symbol`、`asset_type?` | `Quote` |
+| `get_asset_quote` | 通用资产报价（指数、期货、中文别名） | `symbol`、`asset_type?` | `Quote` |
 | `get_historical_data` | 历史 OHLCV | `symbol`、`period`、`interval` | `bars`、`count`、`truncated` |
-| `get_market_overview` | 四个固定分组的横截面概览 | — | `groups`、`ok_count`、`unavailable_count` |
+| `get_market_overview` | 四组固定横截面概览（A股/港股/美股/商品） | — | `groups`、`ok_count`、`unavailable_count` |
 
-### 需求 → 工具 对照表
+### 研究与计算类（第二阶段）
 
-| 用户提问的形态 | 先调 | 再调 / 说明 |
+| 工具 | 用途 | 关键参数 | 主要返回 |
+| --- | --- | --- | --- |
+| `get_company_financials` | 三大报表 + 报告期/披露日/币种/单位/来源 | `symbol`、`period_type`、`limit` | `statements[]`（利润表/资产负债表/现金流量表） |
+| `calculate_financial_metrics` | 按指标名算财务指标，可多期 | `symbol`、`metrics`、`period_type`、`periods` | `MetricSeries[]` |
+| `calculate_financial_formula` | 算单个已注册公式或安全自定义表达式 | `formula_name`、`inputs` | `FormulaResult` |
+| `get_technical_indicators` | 技术指标数值 | `symbol`、`period`、`interval`、`indicators` | `IndicatorSeries[]` |
+| `analyze_fundamentals` | 五维基本面 + 多期表 + 结构化结论 | `symbol`、`analysis_scope`、`period_type`、`periods` | `FundamentalsResult` |
+| `analyze_technicals` | 技术指标 + 历史状态解读 | `symbol`、`period`、`interval`、`indicators` | `TechnicalResult` |
+| `compare_companies` | 多公司同指标对比（含可比性检查） | `symbols`、`metrics`、`period_type` | `ComparisonResult` |
+| `get_supported_indicators` | 公式/指标/技术指标清单与可用性 | — | `formulas`、`metrics`、`technical`、`data_sources` |
+
+## 3. 工具选择规则
+
+| 用户需求 | 工具 | 注意 |
 | --- | --- | --- |
-| 「XXX 多少钱 / 涨了多少」 | `get_stock_quote(symbol)` | 指数或商品自动落到 `get_asset_quote` 也行，两者共用底层服务 |
-| 不确定代码怎么写 | `get_supported_markets()` | 或直接查别名表（第 4 节） |
-| 「最近 N 个月走势 / 给我 K 线」 | `get_historical_data(symbol, period, interval)` | period ∈ 1mo/3mo/6mo/1y/2y/5y；interval ∈ 1d/1wk/1mo |
-| 「今天大盘 / 整体行情」 | `get_market_overview()` | 一次拿 11 个参考资产，逐个独立成功/失败 |
-| 「服务能用吗 / 用的什么源」 | `get_server_status()` | 失败排查第一步 |
-| 报价 `price=null` | — | 读 `error` 字段，把真实原因告诉用户，**不要重试编造** |
-| 历史 `bars=[]` | — | 读 `error`；可换 `period` 或换代码再试一次 |
+| 看当前价格 | `get_stock_quote` / `get_asset_quote` | 永远说明是延迟行情 |
+| 看历史价格 | `get_historical_data` | `1wk`/`1mo` 由日线聚合 |
+| 看财报 | `get_company_financials` | 先确认 `period_type` 与报告期 |
+| 算财务指标 | `calculate_financial_metrics` | **只算用户问的指标**，不要一次全算 |
+| 算自定义公式 | `calculate_financial_formula` | 未注册公式用 `custom_expression`，只支持四则/幂/平方根等安全表达式 |
+| 基本面分析 | `analyze_fundamentals` | `analysis_scope` 选 `full` 或某一维度 |
+| 技术面分析 | `analyze_technicals` | 指标只描述历史状态 |
+| 公司对比 | `compare_companies` | 先看 `comparable`，不可比不要排名 |
+| 查可用指标 | `get_supported_indicators` | 不确定指标名时先查 |
 
-## 3. 数据状态（`data_status`）怎么读、怎么讲
+### 调用原则
 
-| 值 | 含义 | 对用户怎么说 |
+1. **先取真实数据，再计算**：任何指标都必须来自 `get_company_financials` / `get_historical_data` 的真实返回值。
+2. **先检查完整性再算**：`missing_fields`、`insufficient_data`、`not_applicable` 都要如实转述。
+3. **只算需要的**：用户只问毛利率就不要顺手把 21 个指标全跑一遍。
+4. **复用已取数据**：同一轮对话里同一公司同一报告期不要反复拉，服务端也有缓存（财报 12 小时、行情 60 秒、历史 300 秒）。
+5. **不足就说不足**：数据缺失 → `insufficient_data`；公式不适用 → `not_applicable`；源取不到 → `unavailable`。**绝不用 0 填充缺失值。**
+6. **不为"完整报告"编数据**：没有估值所需股价/股本就不给 PE/PB/PS，并在限制里说明。
+7. **比较先查可比性**：报告期不一致、币种不一致、单位不一致时不要直接横向比，也不要强行排名。
+8. **公式由引擎算**：禁止自己心算或用语言模型估算财务比率与技术指标。
+
+## 4. 数据状态语义
+
+### 行情 `data_status`
+
+| 值 | 含义 | 怎么说 |
 | --- | --- | --- |
-| `delayed` | 有权重延迟的快照（本技能的**正常**状态） | 「延迟行情」 |
+| `delayed` | 有权重延迟的快照（**正常**状态） | 「延迟行情」 |
 | `stale` | 行情时间距今过久（>10 天，可能停牌/休市/源不更新） | 「这条数据较旧，行情时间是 …」 |
-| `historical` | 历史K线序列 | 「历史数据」 |
-| `unknown` | 有价格但拿不到行情时间 | 「价格来自 …，但行情时间未知」 |
-| `unavailable` | 没有任何数据源能给出结果 | 「查不到，原因是 …」 |
+| `historical` | 历史K线 / 已披露财报 | 「历史数据」 |
+| `unknown` | 有价格但拿不到行情时间 | 「价格来自 …，行情时间未知」 |
+| `unavailable` | 没有源能给出结果 | 「查不到，原因是 …」 |
 
-**硬规则：永远不要把 `delayed` 说成「实时」。** 免费公开接口无法证明实时性，本技能从不输出 `realtime`。
+**硬规则：永远不要把 `delayed` 说成「实时」。** 本技能从不输出 `realtime`。
 
-## 4. 代码格式速查
+### 计算状态 `calculation_status`
 
-| 市场 | 写法 | 例子 | 中文别名（可直接用） |
+| 值 | 含义 |
+| --- | --- |
+| `ok` | 计算成功，`value` 可用 |
+| `insufficient_data` | 缺少必要输入（含 `missing_fields` 说明） |
+| `not_applicable` | 公式在语义上不适用（分母为 0、EPS 为负、跨币种估值…），**不是** 0 |
+| `unavailable` | 数据源没有给到数据 |
+
+### 结论标签
+
+`Finding.status` 只有五种：`positive` / `negative` / `neutral` / `insufficient_data` / `not_applicable`，
+每条都必须带 `rule`（判定规则）与 `explanation`。趋势 `trend` 只有 `rising` / `falling` / `stable` /
+`insufficient_data` / `not_applicable`（变化幅度 <5% 记为 stable）。
+
+## 5. 财务数据的三个时间与单位
+
+拿到 `get_company_financials` 后，务必区分：
+
+| 字段 | 含义 | 例子 |
+| --- | --- | --- |
+| `period_start` / `period_end` | **报告期**（会计期间） | 2024-09-29 → 2025-09-27 |
+| `filing_date` | **披露日**（实际申报/公告日期） | 2025-10-31（A股/港股镜像可能为空，见 `notes`） |
+| `retrieved_at` | **本次获取时间** | 2026-10-30T12:55:00Z |
+
+其他要点：
+
+- `fiscal_period`：`FY2025`（年报）、`2026Q2`（季报）、`TTM2026-09`（TTM，仅可靠时可标）。
+- `unit` + `unit_scale`：原始金额 = 展示值 × `unit_scale`；跨公司/跨市场比较前先统一。
+- `currency`：ISO 三字码（USD / CNY / HKD）；**跨币种不生成估值指标**（项目没有免费汇率源，腾讯以人民币报表但以港币交易，因此 PE/PB/PS 会返回 `not_applicable` 并说明原因）。
+- `cumulative=true`：A股/港股季报常是**年初至今累计口径**，单季数据需与上一期相减；同比可同期间直接比，环比不可。
+- `derived_fields`：由其他科目推导出来的字段（如 `gross_profit=revenue-cost_of_revenue`、`total_debt`），引用时要说明是推导值。
+- `missing_fields`：该数据源确实没有的科目，**不等于 0**。
+
+## 6. 支持范围（实测）
+
+| 项目 | 美股 | A股 | 港股 |
+| --- | --- | --- | --- |
+| 财务数据源 | SEC EDGAR companyfacts（XBRL，10-K/10-Q） | AKShare（交易所定期报告镜像） | AKShare（披露易定期报告镜像） |
+| 年报 | ✅ `annual` | ✅ `annual` | ✅ `annual` |
+| 季报 | ✅ `quarterly` | ✅ `quarterly`（多为累计口径） | ⚠️ 取决于接口返回的 `DATE_TYPE_CODE` |
+| TTM | ❌ | ❌ | ❌ |
+| 披露日 `filing_date` | ✅ 取自申报记录 | ⚠️ 镜像无可信逐期公告日，留空并在 notes 说明 | ⚠️ 同 A股 |
+| 常见缺失 | 利息费用（部分公司停披露）、预付款项 | 股本、有息负债、折旧摊销 | 研发费用、股本 |
+
+行情/技术面：三市场与商品全覆盖（`1d/1wk/1mo` × `1mo/3mo/6mo/1y/2y/5y`），技术指标需要至少：
+SMA 5 根、EMA 12 根、RSI 15 根、MACD 35 根、BOLL 20 根、ATR 15 根日线。
+
+## 7. 输出规则
+
+### 7.1 行情类（沿用第一阶段）
+
+1. 数字用 Markdown 表格承载；长序列只展示最近若干根并说明总数与 `truncated`。
+2. 每条数据交代：`source`、`timestamp`（行情时间）、`retrieved_at`（获取时间）、`currency`、`data_status`。
+3. 期货写「期货合约参考价」，保留 `status_note`。
+4. `price=null` 时禁止补 0、禁止估算、禁止用旧价顶替；转述 `error`。
+5. 不说「实时」。
+6. `from_cache=true` 说明命中缓存，但**行情时间不变**。
+7. 不做投资建议。
+
+### 7.2 基本面默认 10 段
+
+1. **公司概况**：名称、代码、市场、币种、报告期类型
+2. **财务概览**：营收、净利润、总资产、总负债、经营现金流（最近期 + 同比）
+3. **盈利能力**：毛利率、营业利润率、净利率、ROE、ROA
+4. **偿债能力**：资产负债率、流动比率、速动比率、利息保障倍数（不可算就说明原因）
+5. **运营效率**：总资产周转率、应收账款周转率、存货周转率（注明期间与平均余额口径）
+6. **成长性**：营收/净利/EPS 增长与多期趋势
+7. **现金流质量**：OCF、FCF、OCF÷净利（净利 ≤0 时不得据此判断质量）
+8. **估值**（数据允许时）：PE/PB/PS/股息率，注明 EPS 口径与是否 TTM；亏损公司标 `not_applicable`
+9. **主要观察点**：只描述指标变化与结构特征，不下「优秀/糟糕」结论
+10. **数据限制与来源**：报告期、披露日、来源、缺失科目、累计口径、跨准则差异
+
+### 7.3 技术面默认 9 段
+
+1. **标的与时间范围**（含数据最后一根日期）
+2. **行情概况**（区间开/高/低/收、成交量特征）
+3. **均线系统**（SMA5/10/20/60、EMA12/26 的数值与相对位置）
+4. **RSI14**（数值 + 高位/中性/低位区间说明）
+5. **MACD**（DIF、DEA、柱体正负）
+6. **布林带**（中轨/上轨/下轨/带宽/价格位置）
+7. **ATR14**（波动幅度数值）
+8. **技术状态总结**（只描述历史状态：价格在 MA20 上方、短均线高于长均线、柱体为正…）
+9. **数据限制与来源**（bar 数、来源、最后交易日、指标口径）
+
+只问单个指标时不必铺满 10/9 段，给数值 + 一句位置说明即可。
+
+## 8. 代码格式速查
+
+| 市场 | 写法 | 例子 | 中文别名 |
 | --- | --- | --- | --- |
 | A股/ETF | 6 位 + `.SS`（沪）/ `.SZ`（深） | `600519.SS`、`000001.SZ` | 贵州茅台、平安银行 |
-| A股指数 | `.SS` / `.SZ` 结尾 | `000001.SS`、`399001.SZ`、`000300.SS` | 上证指数、深证成指、沪深300 |
+| A股指数 | `.SS` / `.SZ` | `000001.SS`、`399001.SZ`、`000300.SS` | 上证指数、深证成指、沪深300 |
 | 港股 | 4-5 位 + `.HK` | `0700.HK`、`9988.HK`、`1810.HK` | 腾讯控股、阿里巴巴 |
 | 美股 | 字母代码 | `AAPL`、`NVDA`、`MSFT`、`BRK.B` | 苹果、英伟达、微软 |
 | 美股指数 | `^` 开头 | `^GSPC`、`^IXIC`、`^DJI` | 标普500、纳指、道指 |
 | 港股指数 | `^` 开头 | `^HSI`、`^HSTECH` | 恒生指数、恒生科技 |
 | 大宗商品 | 期货代码 `=F` | `GC=F`、`CL=F`、`BZ=F` | 黄金、WTI原油、布伦特原油 |
 
-易错点：
+易错点：裸 `000001` 按深市股票（平安银行）解释，上证指数要写 `000001.SS`；港股 `700.HK` 自动补零；
+`period=1mo` 不能配 `interval=1mo`；`GC=F` 是**期货参考价**，不是现货。
 
-- 裸写 `000001` 按**深市股票**（平安银行）解释；要上证指数请写 `000001.SS` 或说「上证指数」。
-- 港股 `700.HK` 会自动补零为 `0700.HK`。
-- `period=1mo` 不能配 `interval=1mo`（窗口太小），会明确报错。
-
-## 5. 输出规则（回答用户时必须遵守）
-
-1. **用 Markdown 表格承载数字**，不要写成一段散文；行数多时只展示最近若干根并说明总数。
-2. 每条数据必须同时交代：**来源 `source`**、**行情时间 `timestamp`**、**获取时间 `retrieved_at`**、
-   **币种 `currency`**、**数据状态 `data_status`**。行情时间是市场那一刻，获取时间是本次查询那一刻，不能混用。
-3. **期货不是现货**：`GC=F` / `CL=F` / `BZ=F` 必须写成「期货合约参考价」，并保留 `status_note` 的说明。
-4. **没有数据就说没有数据**：`price=null` 时禁止补 0、禁止估算、禁止用上一次的价格顶替；
-   把 `error` 里的真实原因（限流、超时、接口不可用、代码不存在…）转述给用户。
-5. **不说"实时"**，不说"现在正好是 xx"。可以说「延迟行情，行情时间 2026-10-30 09:39（北京时间）」。
-6. **不做投资建议**：不给买卖点、目标价、仓位建议；用户追问时说明本技能只提供数据。
-7. 历史K线要说明：`1wk` / `1mo` 由日线聚合（开=首日开盘、高=区间最高、低=区间最低、收=末日收盘、
-   量=区间合计），`truncated=true` 表示按服务端上限截断。
-8. 缓存提示：60 秒（报价）/ 300 秒（历史）内重复查询会命中缓存（`from_cache=true`），
-   但**行情时间不会变**，不要因此声称数据是新的。
-
-### 标准报价回答模板
-
-```markdown
-| 代码 | 名称 | 市场 | 币种 | 最新价 | 涨跌 | 涨跌幅 | 行情时间(北京) | 获取时间(北京) | 数据状态 | 来源 |
-| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | --- |
-| `600519.SS` | 贵州茅台 | CN | CNY | 1,371.51 | +17.51 | +1.29% | 2026-10-30 11:30 | 2026-10-30 12:44 | `delayed` | sina |
-
-- 数据状态：延迟行情（免费源无法保证实时）。
-- 行情时间为 2026-10-30 11:30（北京时间），获取时间为 2026-10-30 12:44（北京时间）。
-- 本内容只做数据检索，不构成投资建议。
-```
-
-## 6. 失败与降级
+## 9. 失败与降级
 
 | 现象 | 处理 |
 | --- | --- |
-| 单个资产 `unavailable` | 读 `error`，如实说明；可换等价代码或稍后重试，**不要**编造数字 |
-| 整个概览部分失败 | `unavailable_count` 与各条目的 `error` 已隔离，逐条说明，不要把失败说成 0 |
-| 限流（`Too Many Requests` / push2 限流） | 说明"数据源临时限流，约 5 分钟后恢复"，建议过一会儿再查 |
-| 超时 | 说明"数据源在 N 秒内没有返回"，可重试一次 |
-| 参数被拒（不支持的 period/interval 组合） | 按 `error` 修正参数重试，不要硬编 |
-| `source=eastmoney` 的条目 unavailable | 东财 push2 对出口 IP 限流时会直接断开连接；服务已自动回退到新浪/AKShare，若仍失败就按上面如实说明，**不要**因为"内部有个源挂了"就声称整体不可用 |
+| 行情条目 `unavailable` | 读 `error` 如实说明，可换等价代码重试一次，**不要编造数字** |
+| 概览部分失败 | `unavailable_count` 与各条 `error` 已隔离，逐条说明，不要把失败说成 0 |
+| 限流（Too Many Requests / push2 断连） | 说明"数据源临时限流，约 5 分钟后恢复"，建议稍后再查 |
+| `filing_date` 为空 | 说明该镜像不提供可信逐期公告日，用 `notes` 里的更新日期补充 |
+| 指标 `insufficient_data` | 说明缺哪个科目（看 `missing_fields` / `explanation`） |
+| 指标 `not_applicable` | 说明为什么不适用（分母为 0、EPS 为负、跨币种、利息未披露…） |
+| `compare_companies` 全部不可比 | 列出 `comparability_notes`，不给排名 |
+| 技术指标 `insufficient_data` | 说明需要多少根 K 线，建议扩大 `period` |
+| 参数被拒（不支持 period/interval、ttm） | 按 `error` 修正参数重试，不要硬编 |
 
-## 7. 典型工作流
+## 10. 典型工作流
 
-1. **查一只票**：`get_stock_quote("AAPL")` → 需要走势再 `get_historical_data("AAPL","3mo","1d")` → 表格 + 来源/时间说明。
-2. **扫大盘**：`get_market_overview()` → 按 A股/港股/美股/商品四组呈现，标注期货参考价与缺失项。
-3. **不确定代码**：`get_supported_markets()` → 用正确写法重试；仍失败就说明代码可能不存在。
+1. **「分析苹果基本面」**：`get_company_financials("AAPL","annual",3)` → 需要季度再取 `quarterly`
+   → `analyze_fundamentals("AAPL","full")`（或直接一次）→ 按 7.2 的 10 段输出，标注报告期与披露日。
+2. **「分析英伟达近半年技术面」**：`analyze_technicals("NVDA", period="6mo", interval="1d")`
+   → 检查返回的 `bars` 与各指标 `status` → 按 7.3 的 9 段输出，标注最后交易日与来源。
+3. **「比较苹果和微软盈利能力」**：`compare_companies("AAPL,MSFT", metrics="gross_margin,operating_margin,net_margin,roe,roa")`
+   → 先看 `comparable` 与 `comparability_notes`（报告期可能一个是 FY2025、一个是 FY2026）
+   → 可比才给对比表，不可比就说明期间差异、不做结论性排名。
+4. **「计算过去三年营收 CAGR」**：先取三年营收 → 用 `calculate_financial_formula("cagr", {beginning, ending, years})`
+   → 确认起止年份与间隔数；起止值为负或不一致时返回 `not_applicable` 并说明。
+5. **「经营现金流/净利润，比较近三年」**：`calculate_financial_metrics(symbol, metrics="cfo_to_net_income,free_cash_flow", periods=3)`
+   → 逐年列出；净利 ≤0 的年份单独标注"比值不适用"。
 
-## 8. 风险提示
+## 11. 风险提示与边界
 
-- 数据来自**免费公开接口**（新浪财经 / AKShare / yfinance），存在延迟、字段缺失、临时限流、
-  上游接口变更等风险；关键决策请以交易所或付费行情源为准。
-- 期货合约价格受换月、涨跌停与结算规则影响，**不等于现货价格**，不可直接当现货报价引用。
-- 不同市场的币种、交易时段、节假日不同，跨市场比较前请先统一币种与时间口径。
-- 引用的每个数字都应能追溯到某次工具调用；**不得凭记忆补全没有查到的数据**。
-- 本技能只做数据检索与整理，**不构成任何投资建议**；据此操作风险自负。
+- 数据来自**免费公开接口**（新浪财经 / AKShare / SEC EDGAR / yfinance 回退），存在延迟、缺失、
+  限流、上游变更风险；关键决策请以交易所公告或付费源为准。
+- 财务报表是**已披露的历史数据**，不代表当期经营现状；跨准则（US GAAP / CAS / HKFRS）科目口径不同。
+- 期货合约价格受换月、涨跌停与结算规则影响，**不等于现货价格**。
+- 技术指标只是对历史价格的统计描述，**不预测未来**；本技能不输出「必然上涨/下跌」「买卖信号」「目标价」「保证收益」。
+- 基本面结论只基于真实计算，**不提供行业基准**，因此不会判断某指标"优秀/糟糕"。
+- 每个数字都应能追溯到某次工具调用；**不得凭记忆补全未查到的数据**。
+- 本技能只做数据检索、计算与整理，**不构成任何投资建议**；据此操作风险自负。
+
+## 12. 参考文档
+
+- `references/data-policy.md`：数据来源、状态语义、缓存与失败处理策略
+- `references/fundamental-guide.md`：五维指标口径、科目映射、可比性与限制
+- `references/technical-guide.md`：SMA/EMA/RSI/MACD/BOLL/ATR 的精确公式与参数
+- `references/formula-reference.md`：27 个内置公式与安全表达式语法

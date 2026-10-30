@@ -1,4 +1,4 @@
-"""MCP-level tests: the six tools, their schemas and a real stdio handshake.
+"""MCP-level tests: the market-data tools, their schemas and a real stdio handshake.
 
 The in-memory client exercises the exact code path an MCP host uses, while the
 stdio test proves the server can actually be launched as a subprocess.
@@ -19,12 +19,22 @@ from test_services import FakeProvider
 pytestmark = pytest.mark.anyio
 
 EXPECTED_TOOLS = {
+    # phase 1: live market data
     "get_server_status",
     "get_supported_markets",
     "get_stock_quote",
     "get_historical_data",
     "get_market_overview",
     "get_asset_quote",
+    # phase 2: financial statements, formulas, fundamentals, technicals
+    "get_company_financials",
+    "calculate_financial_metrics",
+    "calculate_financial_formula",
+    "get_technical_indicators",
+    "analyze_fundamentals",
+    "analyze_technicals",
+    "compare_companies",
+    "get_supported_indicators",
 }
 
 
@@ -36,7 +46,7 @@ def wired_server(monkeypatch: pytest.MonkeyPatch):
     return server.build_server()
 
 
-async def test_all_six_tools_are_registered_with_descriptions(wired_server) -> None:
+async def test_all_tools_are_registered_with_descriptions(wired_server) -> None:
     async with Client(wired_server, raise_exceptions=True) as client:
         tools = (await client.list_tools()).tools
 
