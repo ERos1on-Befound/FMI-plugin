@@ -1,4 +1,4 @@
-name: tests
+﻿name: tests
 
 on:
   push:
@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -39,10 +39,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -53,8 +53,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run unit tests
-        # 全部测试都是离线的：使用 fixture 与内存 provider，不访问真实金融接口。
-        run: uv run python -m pytest -q
+        # 鍏ㄩ儴娴嬭瘯閮芥槸绂荤嚎鐨勶細浣跨敤 fixture 涓庡唴瀛?provider锛屼笉璁块棶鐪熷疄閲戣瀺鎺ュ彛銆?        run: uv run python -m pytest -q
 
       - name: Smoke test the MCP server
         run: uv run python scripts/smoke_test.py
