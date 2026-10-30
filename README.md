@@ -46,11 +46,12 @@ FMI 的目标很窄：让模型在需要「查一个价格、拉一段 K 线、�
 
 ## 4. 数据源
 
-三个免费公开源，互补使用（本机实测于 2026-10-30）：
+四个免费公开源，互补使用（本机实测于 2026-10-30）：
 
 | 数据源 | 角色 | 用途 | 实测状态 |
 | --- | --- | --- | --- |
 | **新浪财经** `hq.sinajs.cn` | 报价主源 | A股/港股/美股/指数/外盘期货快照 | ✅ 可用，0.07–0.42s |
+| **东方财富** `push2*.eastmoney.com` | A股报价/历史（单标的） | A股与 A股指数快照 + 日线 | ⚠️ 本机 IP 被限流，代码已按「限速 + 熔断」实现，见 [docs/eastmoney-diagnosis.md](docs/eastmoney-diagnosis.md) |
 | **AKShare**（新浪/腾讯/东财后端） | 历史主源 | 各市场历史日线（周/月本地聚合） | ✅ 可用，历史接口 0.3–1.0s |
 | **yfinance**（Yahoo Finance） | 可移植回退 | 报价 + 历史 | ❌ 本机 IP 被限流（`YFRateLimitError`），代码保留 |
 
@@ -58,9 +59,13 @@ FMI 的目标很窄：让模型在需要「查一个价格、拉一段 K 线、�
 
 - **Yahoo Finance**：直连 chart API 返回 `403`，yfinance 抛 `Too Many Requests`，等待后仍限流。
   因此 yfinance 在本环境中不可用，仅作为换网络环境后的回退。
-- **东方财富 push2 接口**（`stock_bid_ask_em` / `stock_zh_index_spot_em` / `index_zh_a_hist` 等）：
-  抛 `Push2RateLimitError`（IP 临时限流）。所以报价不走 push2，走上表的新浪文本接口。
+- **东方财富 push2 接口**：请求过多时**不返回 429，而是直接断开连接**（无状态码、无 `Retry-After`）。
+  2026-10-30 专项排查结论：DNS/TLS/代理/请求头均正常，5 个端点直连单次请求当时全部 200，
+  失败呈时间聚集且随请求次数收紧 → 属 IP 级节流。因此本项目对该源只做
+  「单标的端点 + 最小间隔 1s + 熔断冷却」，**不做任何盲目重试**，也不使用翻页端点
+  （`clist/get`，`stock_zh_a_spot_em` 的底层，是触发封禁的主因）。
 - 所有快照一律标记为 `delayed`：免费源无法证明实时性。
+- 详细证据、修复与验证结果见 [docs/eastmoney-diagnosis.md](docs/eastmoney-diagnosis.md)。
 
 ## 5. 目录结构
 
@@ -76,10 +81,16 @@ financial-market-intelligence/
 ├── skills/
 │   └── financial-market-intelligence/
 │       └── SKILL.md            # 技能说明：需求→工具对照、输出规则、风险提示
+├── docs/
+│   └── eastmoney-diagnosis.md  # 东财限流专项：证据、修复、验证结果
 ├── examples/
 │   └── sample_market_data.md   # 真实数据示例（脚本生成，非手写）
 ├── scripts/
 │   ├── check_real_data.py      # 真实数据联调检查
+│   ├── check_fallback.py       # 东财不可用时的替代源验证
+│   ├── check_default_fallback.py # 默认顺序下东财冷却时的回退验证（零东财请求）
+│   ├── verify_eastmoney.py     # 东财限定次数（≤3 次请求）真实验证
+│   ├── diagnose_eastmoney.py   # 东财端点 DNS/TLS/HTTP 诊断
 │   ├── make_example.py         # 生成 examples/sample_market_data.md
 │   ├── probe_sina.py           # 数据源探测（新浪）
 │   ├── probe_akshare.py        # 数据源探测（AKShare）
@@ -92,6 +103,7 @@ financial-market-intelligence/
 │   ├── providers/
 │   │   ├── base.py             # Provider 抽象、硬超时、历史后处理
 │   │   ├── sina.py             # 报价主源
+│   │   ├── eastmoney.py        # A股单标的报价/历史（限速 + 熔断）
 │   │   ├── akshare.py          # 历史主源 + 期货报价格式回退
 │   │   └── yahoo.py            # yfinance 回退
 │   ├── services/
@@ -104,6 +116,7 @@ financial-market-intelligence/
     ├── conftest.py
     ├── test_schemas.py         # 数据契约（不编造、不填 0、NaN→None）
     ├── test_providers.py       # 代码映射、字段解析、K 线聚合
+    ├── test_eastmoney.py       # 东财 secid、字段解码、限速、熔断、跨进程冷却
     ├── test_services.py        # 回退顺序、缓存、失败聚合、概览计数
     └── test_tools.py           # MCP 工具（内存客户端 + stdio 子进程握手）
 ```
@@ -226,12 +239,13 @@ uv run financial-intelligence-mcp
 | --- | --- | --- |
 | `tests/test_schemas.py` | 枚举契约、`Quote.unavailable`、涨跌幅计算、NaN/inf→None、`extra=forbid`、时间字段独立 | 12 |
 | `tests/test_providers.py` | 代码映射/别名/冲突、Sina 代码映射、四种字段布局解析、K 线规整与重采样、超时与错误分类、环境变量 | 63 |
+| `tests/test_eastmoney.py` | 东财 `secid` 映射、`f43/f59/f60/f86` 解码、K 线列序、限速间隔、熔断冷却、跨进程冷却 | 35 |
 | `tests/test_services.py` | 数据源回退、无价视为失败、全失败原因合并、缓存 TTL 与 `from_cache`、参数组合校验、概览逐项容错 | 21 |
 | `tests/test_tools.py` | 6 工具注册与 schema、结构化返回、非法输入不抛异常、缺参报错、真实 stdio 子进程握手 | 13 |
 
-说明：单元测试全部离线（假 Provider / 固定报文），**唯一**会联网的用例是
-`test_stdio_transport_starts_and_lists_tools`，它只做 `list_tools` 与 `get_server_status`
-（不查行情），所以测试可以在无网环境跑通。
+合计 **144 passed**（`pytest` 约 3.2s）。说明：单元测试全部离线（假 Provider / 固定报文），
+**唯一**会联网的用例是 `test_stdio_transport_starts_and_lists_tools`，它只做 `list_tools` 与
+`get_server_status`（不查行情），所以测试可以在无网环境跑通。
 
 ## 11. Harness 接入
 
@@ -263,6 +277,10 @@ uv run financial-intelligence-mcp
 
 1. **不是实时行情**：所有快照都是延迟数据，`data_status` 只会是 `delayed` / `stale` / `unknown` / `unavailable`。
 2. **依赖免费接口**：会限流（本机已遇到 Yahoo 与东财 push2 限流）、会改字段、会临时不可用。
+   东财专项结论与替代方案见 [docs/eastmoney-diagnosis.md](docs/eastmoney-diagnosis.md)。
+3. **东财源默认启用但可能长期处于冷却**：一旦被断开即写入 `~/.fmi/eastmoney_state.json`
+   （可用 `FMI_STATE_DIR` 改位置），冷却期内所有进程都直接返回 `unavailable` 而不发请求；
+   行情本身仍由新浪（报价）与 AKShare 的新浪/腾讯后端（历史）提供，不影响其余功能。
 3. **期货 ≠ 现货**：`GC=F` / `CL=F` / `BZ=F` 是期货合约参考价，带 `status_note` 说明，不能当现货引用。
 4. **周/月 K 线是聚合结果**：由日线在服务端聚合（开=首日、高=最大、低=最小、收=末日、量=合计）。
 5. **历史深度受上游限制**：日线从上游可取的最大范围开始，`period` 只是窗口；结果还会被
@@ -276,11 +294,12 @@ uv run financial-intelligence-mcp
 | 优先级 | 事项 |
 | --- | --- |
 | P1 | 报价多源并行（新浪 + 腾讯交叉校验），给 `data_status` 增加"多源一致/不一致"标记 |
+| P1 | 合规替代源：上交所/深交所公开行情文件、巨潮资讯网（CNINFO）公开披露数据 |
 | P1 | 历史数据落本地 SQLite 归档（仅当用户明确需要离线复算时；当前阶段刻意不做数据库） |
 | P2 | 增加 `get_symbol_profile`（基本面摘要）与板块/行业维度概览 |
 | P2 | 交易日历与停牌识别，减少 `stale` 误判 |
 | P3 | 可选的 streamable-http 部署 + 简单鉴权，供多客户端共享 |
-| P3 | 更细的限流退避（指数退避 + 源级熔断） |
+| P3 | 东财恢复后重新评估 `clist/get` 批量端点（当前刻意禁用：它是触发限流的主因） |
 
 ## 14. 免责声明
 

@@ -355,4 +355,4 @@ def test_default_construction_builds_real_providers() -> None:
     service = MarketService(Settings())
     names = [provider.name for provider in service.providers]
     assert names  # at least one provider is enabled by default
-    assert set(names) <= {"sina", "akshare", "yfinance"}
+    assert set(names) == {"sina", "eastmoney", "akshare", "yfinance"}

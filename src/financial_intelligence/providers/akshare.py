@@ -53,6 +53,16 @@ def _ak() -> Any:
     return ak
 
 
+def _eastmoney_throttled() -> bool:
+    """True while the Eastmoney provider is in its cooldown window."""
+    try:
+        from .eastmoney import BREAKER
+
+        return BREAKER.is_open
+    except Exception:  # noqa: BLE001 - never let a diagnostic helper break a request
+        return False
+
+
 class AkshareProvider(MarketDataProvider):
     """Historical data via AKShare plus a foreign-futures quote fallback."""
 
@@ -199,15 +209,25 @@ class AkshareProvider(MarketDataProvider):
                 ),
             ]
         else:
-            attempts = [
-                (
-                    "stock_zh_a_hist",
-                    lambda: ak.stock_zh_a_hist(
-                        symbol=code, period="daily", start_date=start, end_date=end, adjust=""
-                    ),
+            eastmoney_attempt = (
+                "stock_zh_a_hist",
+                lambda: ak.stock_zh_a_hist(
+                    symbol=code, period="daily", start_date=start, end_date=end, adjust=""
                 ),
-                ("stock_zh_a_daily", lambda: ak.stock_zh_a_daily(symbol=f"{exchange}{code}", adjust="")),
-            ]
+            )
+            sina_attempt = (
+                "stock_zh_a_daily",
+                lambda: ak.stock_zh_a_daily(symbol=f"{exchange}{code}", adjust=""),
+            )
+            # ``stock_zh_a_hist`` is backed by Eastmoney push2his. When that edge
+            # is in cooldown (see providers/eastmoney.py) the first attempt is
+            # guaranteed to be dropped, so put the Sina-backed interface first
+            # instead of spending a request that is known to fail.
+            attempts = (
+                [sina_attempt, eastmoney_attempt]
+                if _eastmoney_throttled()
+                else [eastmoney_attempt, sina_attempt]
+            )
         return self._try_chain(spec, attempts)
 
     def _hk_history(self, spec: SymbolSpec) -> list[dict[str, Any]]:

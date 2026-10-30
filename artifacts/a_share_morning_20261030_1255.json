@@ -1,0 +1,1113 @@
+{
+  "generated_at": "2026-10-30T12:55:35.410164+08:00",
+  "calls": [
+    {
+      "tool": "get_server_status",
+      "args": {},
+      "result": {
+        "server_name": "financial-market-intelligence",
+        "version": "0.1.0",
+        "status": "ok",
+        "current_time": "2026-10-30T04:55:36+00:00",
+        "providers": [
+          "sina",
+          "akshare",
+          "yfinance"
+        ],
+        "markets": [
+          "CN",
+          "HK",
+          "US",
+          "COMMODITY"
+        ],
+        "asset_types": [
+          "stock",
+          "index",
+          "commodity"
+        ],
+        "modules": [
+          "config",
+          "schemas",
+          "providers",
+          "services",
+          "utils"
+        ],
+        "notes": [
+          "所有报价都来自免费公开接口，没有付费数据源，也没有交易所直连。",
+          "yfinance / AKShare / 新浪财经的快照都**不能证明**是实时行情，因此报价一律不标 realtime。",
+          "期货代码（如 GC=F / CL=F / BZ=F）返回的是期货合约参考价，不是现货价格。",
+          "本服务只做数据检索，不构成任何投资建议。"
+        ]
+      }
+    },
+    {
+      "tool": "get_supported_markets",
+      "args": {},
+      "result": {
+        "markets": [
+          "中国内地（A股/ETF/指数）",
+          "香港",
+          "美国",
+          "国际大宗商品（期货参考）"
+        ],
+        "asset_types": [
+          "stock",
+          "index",
+          "commodity"
+        ],
+        "providers": [
+          "sina",
+          "akshare",
+          "yfinance"
+        ],
+        "periods": [
+          "1mo",
+          "3mo",
+          "6mo",
+          "1y",
+          "2y",
+          "5y"
+        ],
+        "intervals": [
+          "1d",
+          "1wk",
+          "1mo"
+        ],
+        "notes": [
+          "A股：沪市 6 位代码以 .SS 结尾（600519.SS），深市以 .SZ 结尾（000001.SZ）。",
+          "港股：4-5 位数字代码，可写 0700.HK 或 700.HK（内部补零为 00700.HK）。",
+          "美股：字母代码，如 AAPL / NVDA；指数用 ^GSPC / ^IXIC / ^DJI。",
+          "指数别名：上证指数 / 深证成指 / 沪深300 / 恒生指数 / 恒生科技 / 标普500 / 纳斯达克 / 道琼斯。",
+          "大宗商品：使用期货代码 GC=F（黄金）/ CL=F（WTI原油）/ BZ=F（布伦特原油），返回期货参考价而非现货价。",
+          "1wk / 1mo 的K线由日线在服务端聚合得到；period=1mo 时不支持 interval=1mo。"
+        ]
+      }
+    },
+    {
+      "tool": "get_market_overview",
+      "args": {},
+      "result": {
+        "title": "市场概览（A股 / 港股 / 美股 / 大宗商品）",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "groups": [
+          {
+            "label": "A股",
+            "market": "CN",
+            "items": [
+              {
+                "symbol": "000001.SS",
+                "name": "上证指数",
+                "market": "CN",
+                "asset_type": "index",
+                "currency": "CNY",
+                "price": 3640.5386,
+                "previous_close": 3651.4337,
+                "change": -10.8951,
+                "change_percent": -0.298379,
+                "timestamp": "2026-10-30T03:35:54+00:00",
+                "retrieved_at": "2026-10-30T04:55:36+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              },
+              {
+                "symbol": "399001.SZ",
+                "name": "深证成指",
+                "market": "CN",
+                "asset_type": "index",
+                "currency": "CNY",
+                "price": 11073.079,
+                "previous_close": 11138.198,
+                "change": -65.119,
+                "change_percent": -0.584646,
+                "timestamp": "2026-10-30T03:35:18+00:00",
+                "retrieved_at": "2026-10-30T04:55:36+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              },
+              {
+                "symbol": "000300.SS",
+                "name": "沪深300",
+                "market": "CN",
+                "asset_type": "index",
+                "currency": "CNY",
+                "price": 4026.467,
+                "previous_close": 4041.8376,
+                "change": -15.3706,
+                "change_percent": -0.380287,
+                "timestamp": "2026-10-30T03:35:57+00:00",
+                "retrieved_at": "2026-10-30T04:55:37+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              }
+            ]
+          },
+          {
+            "label": "港股",
+            "market": "HK",
+            "items": [
+              {
+                "symbol": "^HSI",
+                "name": "恒生指数",
+                "market": "HK",
+                "asset_type": "index",
+                "currency": "HKD",
+                "price": 23335.66,
+                "previous_close": 22958.65,
+                "change": 377.01,
+                "change_percent": 1.642126,
+                "timestamp": "2026-10-30T04:05:00+00:00",
+                "retrieved_at": "2026-10-30T04:55:37+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（港股），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              },
+              {
+                "symbol": "^HSTECH",
+                "name": "恒生科技指数",
+                "market": "HK",
+                "asset_type": "index",
+                "currency": "HKD",
+                "price": 3797.6,
+                "previous_close": 3744.14,
+                "change": 53.46,
+                "change_percent": 1.427831,
+                "timestamp": "2026-10-30T04:05:00+00:00",
+                "retrieved_at": "2026-10-30T04:55:37+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（港股），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              }
+            ]
+          },
+          {
+            "label": "美股",
+            "market": "US",
+            "items": [
+              {
+                "symbol": "^GSPC",
+                "name": "标普500指数",
+                "market": "US",
+                "asset_type": "index",
+                "currency": "USD",
+                "price": 7720.3901,
+                "previous_close": 7743.9801,
+                "change": -23.59,
+                "change_percent": -0.304624,
+                "timestamp": "2026-10-29T20:33:03+00:00",
+                "retrieved_at": "2026-10-30T04:55:38+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（美股），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              },
+              {
+                "symbol": "^IXIC",
+                "name": "纳斯达克",
+                "market": "US",
+                "asset_type": "index",
+                "currency": "USD",
+                "price": 26184.7244,
+                "previous_close": 26549.8507,
+                "change": -365.1263,
+                "change_percent": -1.375248,
+                "timestamp": "2026-10-29T21:30:00+00:00",
+                "retrieved_at": "2026-10-30T04:55:38+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（美股），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              },
+              {
+                "symbol": "^DJI",
+                "name": "道琼斯",
+                "market": "US",
+                "asset_type": "index",
+                "currency": "USD",
+                "price": 52342.5586,
+                "previous_close": 52475.0986,
+                "change": -132.54,
+                "change_percent": -0.252577,
+                "timestamp": "2026-10-29T20:34:04+00:00",
+                "retrieved_at": "2026-10-30T04:55:38+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "Sina 公开行情快照（美股），非交易所直连，标记为 delayed。",
+                "from_cache": false
+              }
+            ]
+          },
+          {
+            "label": "大宗商品（期货参考价）",
+            "market": "COMMODITY",
+            "items": [
+              {
+                "symbol": "GC=F",
+                "name": "纽约黄金",
+                "market": "COMMODITY",
+                "asset_type": "commodity",
+                "currency": "USD",
+                "price": 4004.743,
+                "previous_close": 4031.4,
+                "change": -26.657,
+                "change_percent": -0.661234,
+                "timestamp": "2026-10-30T04:55:34+00:00",
+                "retrieved_at": "2026-10-30T04:55:38+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "外盘期货近月连续合约参考价，不是现货价格；合约/单位以交易所为准。",
+                "from_cache": false
+              },
+              {
+                "symbol": "CL=F",
+                "name": "纽约原油",
+                "market": "COMMODITY",
+                "asset_type": "commodity",
+                "currency": "USD",
+                "price": 102.997,
+                "previous_close": 102.0,
+                "change": 0.997,
+                "change_percent": 0.977451,
+                "timestamp": "2026-10-30T04:55:36+00:00",
+                "retrieved_at": "2026-10-30T04:55:39+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "外盘期货近月连续合约参考价，不是现货价格；合约/单位以交易所为准。",
+                "from_cache": false
+              },
+              {
+                "symbol": "BZ=F",
+                "name": "布伦特原油",
+                "market": "COMMODITY",
+                "asset_type": "commodity",
+                "currency": "USD",
+                "price": 111.948,
+                "previous_close": 110.8,
+                "change": 1.148,
+                "change_percent": 1.036101,
+                "timestamp": "2026-10-30T04:55:32+00:00",
+                "retrieved_at": "2026-10-30T04:55:39+00:00",
+                "source": "sina",
+                "data_status": "delayed",
+                "error": null,
+                "status_note": "外盘期货近月连续合约参考价，不是现货价格；合约/单位以交易所为准。",
+                "from_cache": false
+              }
+            ]
+          }
+        ],
+        "ok_count": 11,
+        "unavailable_count": 0,
+        "notes": [
+          "概览中的每个条目都是独立请求，单个资产失败不会影响其他资产（失败原因见该条目的 error 字段）。",
+          "美元/港元指数与期货的涨跌幅按各自币种计算，跨市场比较前请自行统一币种。",
+          "期货价格为近月连续合约参考价，不是现货价格。",
+          "本概览只做数据呈现，不构成投资建议。"
+        ]
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "000001.SS"
+      },
+      "result": {
+        "symbol": "000001.SS",
+        "name": "上证指数",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 3640.5386,
+        "previous_close": 3651.4337,
+        "change": -10.8951,
+        "change_percent": -0.298379,
+        "timestamp": "2026-10-30T03:35:54+00:00",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": true
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "399001.SZ"
+      },
+      "result": {
+        "symbol": "399001.SZ",
+        "name": "深证成指",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 11073.079,
+        "previous_close": 11138.198,
+        "change": -65.119,
+        "change_percent": -0.584646,
+        "timestamp": "2026-10-30T03:35:18+00:00",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": true
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "000300.SS"
+      },
+      "result": {
+        "symbol": "000300.SS",
+        "name": "沪深300",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 4026.467,
+        "previous_close": 4041.8376,
+        "change": -15.3706,
+        "change_percent": -0.380287,
+        "timestamp": "2026-10-30T03:35:57+00:00",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": true
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "399006.SZ"
+      },
+      "result": {
+        "symbol": "399006.SZ",
+        "name": "创业板指",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 2487.908,
+        "previous_close": 2517.588,
+        "change": -29.68,
+        "change_percent": -1.178906,
+        "timestamp": "2026-10-30T03:35:33+00:00",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "000688.SS"
+      },
+      "result": {
+        "symbol": "000688.SS",
+        "name": "科创50",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 1206.657,
+        "previous_close": 1228.0907,
+        "change": -21.4337,
+        "change_percent": -1.745286,
+        "timestamp": "2026-10-30T03:35:57+00:00",
+        "retrieved_at": "2026-10-30T04:55:39+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "600519.SS"
+      },
+      "result": {
+        "symbol": "600519.SS",
+        "name": "贵州茅台",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 1371.51,
+        "previous_close": 1354.0,
+        "change": 17.51,
+        "change_percent": 1.293205,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:40+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "601318.SS"
+      },
+      "result": {
+        "symbol": "601318.SS",
+        "name": "中国平安",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 52.53,
+        "previous_close": 53.2,
+        "change": -0.67,
+        "change_percent": -1.259398,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:40+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "600036.SS"
+      },
+      "result": {
+        "symbol": "600036.SS",
+        "name": "招商银行",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 43.17,
+        "previous_close": 42.94,
+        "change": 0.23,
+        "change_percent": 0.535631,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:40+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "601899.SS"
+      },
+      "result": {
+        "symbol": "601899.SS",
+        "name": "紫金矿业",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 27.75,
+        "previous_close": 28.04,
+        "change": -0.29,
+        "change_percent": -1.034237,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:40+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "600030.SS"
+      },
+      "result": {
+        "symbol": "600030.SS",
+        "name": "中信证券",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 24.32,
+        "previous_close": 24.5,
+        "change": -0.18,
+        "change_percent": -0.734694,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:41+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "000858.SZ"
+      },
+      "result": {
+        "symbol": "000858.SZ",
+        "name": "五 粮 液",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 73.17,
+        "previous_close": 72.28,
+        "change": 0.89,
+        "change_percent": 1.231323,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:41+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "300750.SZ"
+      },
+      "result": {
+        "symbol": "300750.SZ",
+        "name": "宁德时代",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 234.05,
+        "previous_close": 229.07,
+        "change": 4.98,
+        "change_percent": 2.174008,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:41+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_stock_quote",
+      "args": {
+        "symbol": "002594.SZ"
+      },
+      "result": {
+        "symbol": "002594.SZ",
+        "name": "比亚迪",
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "price": 82.54,
+        "previous_close": 82.5,
+        "change": 0.04,
+        "change_percent": 0.048485,
+        "timestamp": "2026-10-30T03:30:00+00:00",
+        "retrieved_at": "2026-10-30T04:55:41+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_asset_quote",
+      "args": {
+        "symbol": "上证指数"
+      },
+      "result": {
+        "symbol": "000001.SS",
+        "name": "上证指数",
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "price": 3640.5386,
+        "previous_close": 3651.4337,
+        "change": -10.8951,
+        "change_percent": -0.298379,
+        "timestamp": "2026-10-30T03:35:54+00:00",
+        "retrieved_at": "2026-10-30T04:55:41+00:00",
+        "source": "sina",
+        "data_status": "delayed",
+        "error": null,
+        "status_note": "Sina 公开行情快照（A股/指数），非交易所直连，标记为 delayed。",
+        "from_cache": true
+      }
+    },
+    {
+      "tool": "get_historical_data",
+      "args": {
+        "symbol": "000001.SS",
+        "period": "1mo",
+        "interval": "1d"
+      },
+      "result": {
+        "symbol": "000001.SS",
+        "name": null,
+        "market": "CN",
+        "asset_type": "index",
+        "currency": "CNY",
+        "period": "1mo",
+        "interval": "1d",
+        "source": "akshare",
+        "data_status": "historical",
+        "retrieved_at": "2026-10-30T04:55:42+00:00",
+        "bars": [
+          {
+            "date": "2026-09-29",
+            "open": 3816.154,
+            "high": 3843.838,
+            "low": 3810.812,
+            "close": 3830.451,
+            "volume": 39947339100.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-09-30",
+            "open": 3839.253,
+            "high": 3851.217,
+            "low": 3833.086,
+            "close": 3842.195,
+            "volume": 41456024700.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-08",
+            "open": 3838.977,
+            "high": 3864.118,
+            "low": 3795.374,
+            "close": 3811.904,
+            "volume": 48220168500.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-09",
+            "open": 3804.09,
+            "high": 3824.709,
+            "low": 3754.135,
+            "close": 3813.791,
+            "volume": 53514992100.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-12",
+            "open": 3806.979,
+            "high": 3828.216,
+            "low": 3790.995,
+            "close": 3797.242,
+            "volume": 46144898100.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-13",
+            "open": 3760.799,
+            "high": 3822.105,
+            "low": 3741.526,
+            "close": 3800.864,
+            "volume": 48330590900.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-14",
+            "open": 3790.631,
+            "high": 3811.809,
+            "low": 3761.957,
+            "close": 3767.227,
+            "volume": 44596255400.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-15",
+            "open": 3710.695,
+            "high": 3724.561,
+            "low": 3674.817,
+            "close": 3707.476,
+            "volume": 51016318900.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-16",
+            "open": 3723.797,
+            "high": 3750.77,
+            "low": 3681.283,
+            "close": 3716.284,
+            "volume": 47263215800.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-19",
+            "open": 3694.118,
+            "high": 3743.799,
+            "low": 3692.29,
+            "close": 3730.92,
+            "volume": 41779124800.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-20",
+            "open": 3718.436,
+            "high": 3740.072,
+            "low": 3702.444,
+            "close": 3735.37,
+            "volume": 40869306200.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-21",
+            "open": 3740.568,
+            "high": 3743.085,
+            "low": 3703.125,
+            "close": 3713.028,
+            "volume": 37828638900.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-22",
+            "open": 3714.476,
+            "high": 3714.476,
+            "low": 3649.865,
+            "close": 3658.026,
+            "volume": 43769196300.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-23",
+            "open": 3623.567,
+            "high": 3691.399,
+            "low": 3574.271,
+            "close": 3690.475,
+            "volume": 55284291200.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-26",
+            "open": 3671.004,
+            "high": 3699.01,
+            "low": 3664.821,
+            "close": 3697.52,
+            "volume": 43279431800.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-27",
+            "open": 3698.441,
+            "high": 3708.198,
+            "low": 3648.301,
+            "close": 3648.301,
+            "volume": 41778953200.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-28",
+            "open": 3676.919,
+            "high": 3684.491,
+            "low": 3652.366,
+            "close": 3681.469,
+            "volume": 43362282900.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-29",
+            "open": 3676.773,
+            "high": 3678.458,
+            "low": 3645.26,
+            "close": 3651.434,
+            "volume": 44356414400.0,
+            "symbol": "000001.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          }
+        ],
+        "count": 18,
+        "truncated": false,
+        "error": null,
+        "status_note": null,
+        "from_cache": false
+      }
+    },
+    {
+      "tool": "get_historical_data",
+      "args": {
+        "symbol": "600519.SS",
+        "period": "1mo",
+        "interval": "1d"
+      },
+      "result": {
+        "symbol": "600519.SS",
+        "name": null,
+        "market": "CN",
+        "asset_type": "stock",
+        "currency": "CNY",
+        "period": "1mo",
+        "interval": "1d",
+        "source": "akshare",
+        "data_status": "historical",
+        "retrieved_at": "2026-10-30T04:55:43+00:00",
+        "bars": [
+          {
+            "date": "2026-09-29",
+            "open": 1244.6,
+            "high": 1245.87,
+            "low": 1230.88,
+            "close": 1235.58,
+            "volume": 2636630.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-09-30",
+            "open": 1239.53,
+            "high": 1268.0,
+            "low": 1236.05,
+            "close": 1258.62,
+            "volume": 3833098.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-08",
+            "open": 1252.9,
+            "high": 1258.0,
+            "low": 1242.0,
+            "close": 1255.79,
+            "volume": 2516757.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-09",
+            "open": 1255.42,
+            "high": 1282.0,
+            "low": 1255.42,
+            "close": 1263.0,
+            "volume": 3511051.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-12",
+            "open": 1262.95,
+            "high": 1288.0,
+            "low": 1261.0,
+            "close": 1288.0,
+            "volume": 3155604.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-13",
+            "open": 1287.0,
+            "high": 1288.48,
+            "low": 1268.11,
+            "close": 1274.89,
+            "volume": 2657276.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-14",
+            "open": 1270.1,
+            "high": 1286.75,
+            "low": 1266.0,
+            "close": 1286.0,
+            "volume": 2377273.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-15",
+            "open": 1286.0,
+            "high": 1317.76,
+            "low": 1282.0,
+            "close": 1312.97,
+            "volume": 5767722.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-16",
+            "open": 1311.57,
+            "high": 1329.88,
+            "low": 1301.68,
+            "close": 1329.0,
+            "volume": 3850175.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-19",
+            "open": 1322.5,
+            "high": 1348.6,
+            "low": 1321.0,
+            "close": 1324.97,
+            "volume": 3972894.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-20",
+            "open": 1321.01,
+            "high": 1335.0,
+            "low": 1316.14,
+            "close": 1331.88,
+            "volume": 3413565.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-21",
+            "open": 1331.88,
+            "high": 1331.98,
+            "low": 1302.36,
+            "close": 1309.69,
+            "volume": 3351416.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-22",
+            "open": 1303.21,
+            "high": 1322.0,
+            "low": 1296.0,
+            "close": 1318.49,
+            "volume": 4249133.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-23",
+            "open": 1311.84,
+            "high": 1343.88,
+            "low": 1310.0,
+            "close": 1335.0,
+            "volume": 5768593.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-26",
+            "open": 1325.4,
+            "high": 1350.0,
+            "low": 1324.79,
+            "close": 1349.98,
+            "volume": 4159916.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-27",
+            "open": 1343.88,
+            "high": 1357.0,
+            "low": 1338.01,
+            "close": 1355.9,
+            "volume": 3866914.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-28",
+            "open": 1354.98,
+            "high": 1354.98,
+            "low": 1322.6,
+            "close": 1330.75,
+            "volume": 3880493.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          },
+          {
+            "date": "2026-10-29",
+            "open": 1349.99,
+            "high": 1356.0,
+            "low": 1330.01,
+            "close": 1354.0,
+            "volume": 4299231.0,
+            "symbol": "600519.SS",
+            "currency": "CNY",
+            "source": "akshare"
+          }
+        ],
+        "count": 18,
+        "truncated": false,
+        "error": null,
+        "status_note": null,
+        "from_cache": false
+      }
+    }
+  ]
+}

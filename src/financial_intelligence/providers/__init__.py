@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from ..config import Settings
 from .base import MarketDataProvider, ProviderError, assemble_history, call_with_timeout
+from .eastmoney import EastmoneyProvider
 from .sina import SinaProvider
 
 __all__ = [
+    "EastmoneyProvider",
     "MarketDataProvider",
     "ProviderError",
     "SinaProvider",
@@ -27,6 +29,10 @@ def build_providers(settings: Settings) -> list[MarketDataProvider]:
     for name in settings.enabled_providers():
         if name == "sina":
             providers.append(SinaProvider(settings))
+        elif name == "eastmoney":
+            from .eastmoney import EastmoneyProvider
+
+            providers.append(EastmoneyProvider(settings))
         elif name == "akshare":
             from .akshare import AkshareProvider
 

@@ -107,9 +107,17 @@ class Settings:
     #: serve a symbol is skipped, and a provider that fails falls through to the
     #: next one (the failure reasons are surfaced in ``Quote.error``).
     enable_sina: bool = True
+    enable_eastmoney: bool = True
     enable_akshare: bool = True
     enable_yfinance: bool = True
-    provider_order: tuple[str, ...] = ("sina", "akshare", "yahoo")
+    provider_order: tuple[str, ...] = ("sina", "eastmoney", "akshare", "yahoo")
+
+    # --- eastmoney pacing / breaker ---
+    #: Minimum gap between two Eastmoney requests (seconds).  Eastmoney drops
+    #: connections instead of returning 429, so pacing is the main defence.
+    eastmoney_min_interval: float = 1.0
+    #: How long to stop calling Eastmoney after a dropped connection (seconds).
+    eastmoney_cooldown: float = 300.0
 
     # --- data freshness thresholds (seconds) ---
     #: A quote whose market timestamp is older than this is reported as ``stale``.
@@ -125,6 +133,7 @@ class Settings:
         """Return the configured provider order, filtered by the enable flags."""
         flags = {
             "sina": self.enable_sina,
+            "eastmoney": self.enable_eastmoney,
             "akshare": self.enable_akshare,
             "yahoo": self.enable_yfinance,
             "yfinance": self.enable_yfinance,
@@ -141,9 +150,14 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         history_cache_ttl=_env_float(source, "FMI_HISTORY_CACHE_TTL", 300.0),
         max_history_rows=_env_int(source, "FMI_MAX_HISTORY_ROWS", 1500),
         enable_sina=_env_bool(source, "FMI_ENABLE_SINA", True),
+        enable_eastmoney=_env_bool(source, "FMI_ENABLE_EASTMONEY", True),
         enable_akshare=_env_bool(source, "FMI_ENABLE_AKSHARE", True),
         enable_yfinance=_env_bool(source, "FMI_ENABLE_YFINANCE", True),
-        provider_order=_env_order(source, "FMI_PROVIDER_ORDER", ("sina", "akshare", "yahoo")),
+        provider_order=_env_order(
+            source, "FMI_PROVIDER_ORDER", ("sina", "eastmoney", "akshare", "yahoo")
+        ),
+        eastmoney_min_interval=_env_float(source, "FMI_EASTMONEY_MIN_INTERVAL", 1.0),
+        eastmoney_cooldown=_env_float(source, "FMI_EASTMONEY_COOLDOWN", 300.0),
         stale_after=_env_float(source, "FMI_STALE_AFTER_DAYS", 10.0) * 86400.0,
         log_level=_env_str(source, "FMI_LOG_LEVEL", "INFO").upper(),
     )
