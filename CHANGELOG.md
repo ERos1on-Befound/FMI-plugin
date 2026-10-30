@@ -2,6 +2,11 @@
 
 本项目的所有重要变更记录在此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.3.1] - 2026-10-30
+
+### Fixed
+- CI 工作流 `.github/workflows/tests.yml` 无法运行（run 显示为文件路径、0 个 job）：一次编码往返改写把第 56 行中文注释与 `run:` 合并，`Run unit tests` step 没有命令。已用 UTF-8 工具重写为英文注释，并复查 `pytest`（ubuntu / windows）与 `lint` 三个任务全部通过。
+
 ## [Unreleased]
 
 ### Added
